@@ -5,9 +5,6 @@
     .p2align 2
     .text
     .global WRITESERIAL
-    .global READSERIAL
-    .global READSERIALWORD
-
     // 写串口：将 a0 的低八位写入串口
 WRITESERIAL:
     la.abs t1, COM1
@@ -15,6 +12,7 @@ WRITESERIAL:
     jr ra
 
     // 读串口：将读到的数据写入 a0 低八位
+    .global READSERIAL
 READSERIAL:
     la.abs t1, COM1
 .TESTR:
@@ -37,6 +35,7 @@ READSERIAL:
     jr ra
 
     // 读串口：将读到的四字节数据写入 a0
+    .global READSERIALWORD
 READSERIALWORD:
     // 保存寄存器
     addi.w sp, sp, -0x14

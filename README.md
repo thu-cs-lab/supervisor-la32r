@@ -113,8 +113,8 @@ CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在
 
 监控程序实现了简单的线程调度，系统中只有两个线程：
 
-1. thread0：idle
-2. thread1：user/shell
+1. thread0：idle，响应串口中断（CRMD.IE=1，ECFG.LIE[3]=1）
+2. thread1：user/shell，不响应中断（CRMD.IE=0，ECFG.LIE[3]=0）
 
 启动时，监控程序会运行 thread1。thread1 会尝试从串口读取数据，如果发现没有数据可以读取，就会调用 wait 系统调用，此时监控程序会调度到 thread0。thread0 打开了串口中断，因此当串口上有数据可以读取的时候，监控程序会响应中断，调度到 thread1，thread1 就可以从串口读取数据。
 

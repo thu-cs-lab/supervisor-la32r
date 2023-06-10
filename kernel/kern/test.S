@@ -4,27 +4,18 @@
 #include <exception.h>
 #include <shell.h>
 
-/*==============================================================
- *                        TEST for MONITOR
- *  Built-in test program
- *  Entry symbol prefix 'UTEST_'
- *==============================================================*/
-    
 
     .section .text.utest
     .p2align 2
 
-    /*  Simple test program
-     *  Write integer 1 to register a0
-     */
+    // Simple test program
+    // Write integer 1 to register a0
 UTEST_SIMPLE:
     li.w a0, 0x1
     jr ra
-    /* End of test */
 
-    /*  STREAM test program
-     *  Continous memory read/write
-     */
+    // STREAM test program
+    // Continous memory read/write
 UTEST_STREAM:
     li.w a0, 0x80100000
     li.w a1, 0x80400000
@@ -39,22 +30,21 @@ stream_next:
 
 stream_end:
     jr ra
-    /* End of test */
 
-    /*  MATRIX test program
-     *  Matrix multiplication
-     *  Reference C code:
-        void matrix(int a[128][128],int b[128][128],int c[128][128],unsigned int n) {
-            unsigned int i,j,k;
-            for (k=0; k!=n; k++) {
-                for (i=0; i!=n; i++) {
-                    int r = a[i][k];
-                    for (j=0; j!=n; j++)
-                        c[i][j] += r * b[k][j];
-                }
-            }
-        }
-     */
+    //  MATRIX test program
+    //  Matrix multiplication
+    //  Reference C code:
+    //  void matrix(int a[128][128],int b[128][128],int c[128][128],unsigned int n) {
+    //      unsigned int i,j,k;
+    //      for (k=0; k!=n; k++) {
+    //          for (i=0; i!=n; i++) {
+    //              int r = a[i][k];
+    //              for (j=0; j!=n; j++)
+    //                  c[i][j] += r * b[k][j];
+    //          }
+    //      }
+    //  }
+    //
 UTEST_MATRIX:
     // set arguments
     // a0 -> a
@@ -99,29 +89,28 @@ UTEST_MATRIX:
     bne $r20,$r8,.L3
 .L1:
     jr $r1
-    /* End of test */
 
-    /*  CryptoNight test program
-     *  Run simplified CryptoNight memory-hard loop
-     *  Reference C code:
-        void crn(int pad[],unsigned int a,unsigned int b,unsigned int n) {
-            unsigned int k;
-            for (k=0; k!=0x80000; k++)
-                pad[k] = k;
-            for (k=0; k!=n; k++) {
-                unsigned int t, addr1, addr2;
-                addr1 = a & 0x7FFFF;
-                t = (a >> 1) ^ (pad[addr1] << 1); // Replace the AES step
-                pad[addr1] = t ^ b;
-                addr2 = t & 0x7FFFF;
-                b = t;
-                t = pad[addr2];
-                a += b * t;
-                pad[addr2] = a;
-                a ^= t;
-            } 
-        }
-     */
+    //  CryptoNight test program
+    //  Run simplified CryptoNight memory-hard loop
+    //  Reference C code:
+    //  void crn(int pad[],unsigned int a,unsigned int b,unsigned int n) {
+    //      unsigned int k;
+    //      for (k=0; k!=0x80000; k++)
+    //          pad[k] = k;
+    //      for (k=0; k!=n; k++) {
+    //          unsigned int t, addr1, addr2;
+    //          addr1 = a & 0x7FFFF;
+    //          t = (a >> 1) ^ (pad[addr1] << 1); // Replace the AES step
+    //          pad[addr1] = t ^ b;
+    //          addr2 = t & 0x7FFFF;
+    //          b = t;
+    //          t = pad[addr2];
+    //          a += b * t;
+    //          pad[addr2] = a;
+    //          a ^= t;
+    //      } 
+    //  }
+    //
 UTEST_CRYPTONIGHT:
     // set arguments
     // a0 -> pad
@@ -169,11 +158,9 @@ UTEST_CRYPTONIGHT:
     bne $r7,$r15,.LCN4
 .LCN1:
     jr $r1
-    /* End of test */
 
-    /*  系统调用测试程序
-     *  该测试仅在实现异常处理时有效
-     */
+    // 系统调用测试程序
+    // 该测试仅在实现异常处理时有效
 #ifdef ENABLE_INT
 UTEST_PUTC:
     // 系统调用号保存在 a7
@@ -193,11 +180,9 @@ UTEST_PUTC:
 #define TESTLOOP32  0x02000000      /*  32M约3.4千万次   */
 #define TESTLOOP16  0x01000000      /*  16M约1.7千万次   */
 
-    /*  性能标定程序(1)
-     *  这段程序一般没有数据冲突和结构冲突，可作为性能标定。
-     *  若执行延迟槽，执行这段程序需至少384M指令，384M/time可算得频率。
-     *  不执行延迟槽，执行这段程序需至少320M指令，320M/time可算得频率。
-     */
+    // 性能标定程序(1)
+    // 这段程序一般没有数据冲突和结构冲突，可作为性能标定。
+    // 执行这段程序需至少 320M指令，320M/time 可算得频率。
 UTEST_1PTB:
     li.w t0, TESTLOOP64
 .LC0:
@@ -206,13 +191,12 @@ UTEST_1PTB:
     ori t2, zero, 1
     ori t3, zero, 2
     bne t0, zero, .LC0
+
     jr ra
 
-    /*  运算数据冲突的效率测试(2)
-     *  这段程序含有大量数据冲突，可测试数据冲突对效率的影响。
-     *  执行延迟槽，执行这段程序需至少192M指令。
-     *  不执行延迟槽，执行这段程序需至少176M指令。
-     */
+    // 运算数据冲突的效率测试(2)
+    // 这段程序含有大量数据冲突，可测试数据冲突对效率的影响。
+    // 执行这段程序需至少 176M 指令。
 UTEST_2DCT:
     li.w t0, TESTLOOP16
     ori t1, zero, 1
@@ -234,13 +218,12 @@ UTEST_2DCT:
 
     addi.w t0, t0, -1
     bne t0, zero, .LC1
+
     jr ra
 
-    /*  控制指令冲突测试(3)
-     *  这段程序有大量控制冲突。
-     *  无延迟槽执行需要至少256M指令；
-     *  有延迟槽需要224M指令。
-     */
+    // 控制指令冲突测试(3)
+    // 这段程序有大量控制冲突。
+    // 执行至少 256M 条指令。
 UTEST_3CCT:
     li.w t0, TESTLOOP64
 .LC2_0:
@@ -248,17 +231,14 @@ UTEST_3CCT:
     jr ra
 .LC2_1:
     b .LC2_2
-    nop
 .LC2_2:
     addi.w t0, t0, -1
     b .LC2_0
     addi.w t0, t0, -1
 
-    /*  访存相关数据冲突测试(4)
-     *  这段程序反复对内存进行有数据冲突的读写。
-     *  不执行延迟槽需要至少192M指令。
-     *  执行延迟槽，需要至少224M指令。
-     */
+    // 访存相关数据冲突测试(4)
+    // 这段程序反复对内存进行有数据冲突的读写。
+    // 执行至少 192M 指令。
 UTEST_4MDCT:
     li.w t0, TESTLOOP32
     addi.w sp, sp, -4

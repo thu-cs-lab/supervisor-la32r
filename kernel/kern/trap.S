@@ -8,7 +8,7 @@
     .global EXCEPTIONHANDLER
     .global RETURNFRMTRAP
 
-/* 本文件仅在启用异常处理时有用 */
+    // 仅在启用异常处理时需要本文件
 
 #ifndef ENABLE_INT
 FATAL:
@@ -16,8 +16,8 @@ EXCEPTIONHANDLER:
 RETURNFRMTRAP:
 WAKEUPSHELL:
 SYSCALL:
-    b   FATAL                       // 不支持异常时，这些入口都不应该进入，如果进入就永远等待，用于调试
-    nop
+    // 不支持异常时，这些入口都不应该进入，死循环
+    b   FATAL
 #else
 
     // 遇到不可恢复问题，重启
@@ -30,7 +30,8 @@ FATAL:
     b START
 
 EXCEPTIONHANDLER:
-    // 腾出 sp 寄存器
+    // 腾出 sp 寄存器用于保存寄存器
+    // 交换 sp 寄存器和 CSR_SAVE0
     csrwr sp, CSR_SAVE0
 
     // 获取当前线程的异常帧地址
@@ -91,7 +92,7 @@ EXCEPTIONHANDLER:
     srli.w t0, t0, 16
     andi t0, t0, 0x3F
 
-    // 如果是中断，则切换到主线程
+    // 如果是中断，则切换到 thread1(user/shell)
     li.w t1, EX_IRQ
     beq t1, t0, WAKEUPSHELL
 
@@ -99,7 +100,8 @@ EXCEPTIONHANDLER:
     li.w t1, EX_SYS
     beq t1, t0, SYSCALL
 
-    b FATAL                         // 无法处理的中断，出现严重错误
+    // 无法处理的中断，出现严重错误
+    b FATAL
 
     // 从异常中恢复
 RETURNFRMTRAP:
@@ -149,7 +151,6 @@ RETURNFRMTRAP:
     // 最后恢复 sp
     ld.w sp, sp, TF_sp
     ertn
-
 
 WAKEUPSHELL:
     // 获取当前线程 TCB
