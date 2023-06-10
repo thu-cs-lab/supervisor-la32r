@@ -1,5 +1,5 @@
 #include <regdef.h>
-#include <mipsregs.h> 
+#include <la32regs.h> 
 #include <shell.h>
 
     .section .bss.uregs
@@ -155,7 +155,8 @@ SHELL:
     bl WRITESERIAL
 
 #ifdef ENABLE_INT
-    mtc0 v0, CP0_EPC                // 用户程序入口写入EPC
+    // 把用户程序入口写入 ERA
+    csrwr s0, CSR_ERA
 #endif
 
     la.abs ra, uregs
@@ -198,7 +199,8 @@ SHELL:
     ld.w $r30, ra, PUTREG(30)
 
 #ifdef ENABLE_INT
-    eret                            // 进入用户程序
+    // 切换特权级，进入用户程序
+    ertn
 #else
     // 读取用户程序入口并跳转
     // 用户 ret 后回到 .USERRET2

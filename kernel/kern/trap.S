@@ -1,5 +1,5 @@
 #include <regdef.h>
-#include <mipsregs.h>
+#include <la32regs.h>
 #include <unistd.h>
 #include <exception.h>
 
@@ -20,159 +20,191 @@ SYSCALL:
     nop
 #else
 
-FATAL:                              
-                                    // 严重问题，重启
-    ori a0, zero, 0x80              // 错误信号
-    jal WRITESERIAL                 // 发送
-    nop
-    lui v0, %hi(START)              // 重启地址
-    addiu v0, %lo(START)
-    jr v0
-    nop
+    // 遇到不可恢复问题，重启
+FATAL:
+    // 通知 Term
+    li.w a0, 0x80
+    b WRITESERIAL
 
+    // 重启
+    b START
 
 EXCEPTIONHANDLER:
-    mfc0 k0, CP0_STATUS             // 处理一般中断
-    nop
-    xori k1, k0, ST0_IE
-    and k0, k1, k0                  // IE置零
-    mtc0 k0, CP0_STATUS             // 禁止嵌套中断
-                                    // 一般由异常级别位自动禁止中断
-    lui k0, %hi(current)
-    lw k0, %lo(current)(k0)         // k0 = 取得current的中断帧存储地址
+    // 腾出 sp 寄存器
+    csrwr sp, CSR_SAVE0
 
-    sw sp, TF_sp(k0)                // 保存中断帧
-    or sp, k0, zero
-    sw AT, TF_AT(sp)
-    sw v0, TF_v0(sp)
-    sw v1, TF_v1(sp)
-    sw a0, TF_a0(sp)
-    sw a1, TF_a1(sp)
-    sw a2, TF_a2(sp)
-    sw a3, TF_a3(sp)
-    sw t0, TF_t0(sp)
-    sw t1, TF_t1(sp)
-    sw t2, TF_t2(sp)
-    sw t3, TF_t3(sp)
-    sw t4, TF_t4(sp)
-    sw t5, TF_t5(sp)
-    sw t6, TF_t6(sp)
-    sw t7, TF_t7(sp)
-    sw t8, TF_t8(sp)
-    sw t9, TF_t9(sp)
-    sw s0, TF_s0(sp)
-    sw s1, TF_s1(sp)
-    sw s2, TF_s2(sp)
-    sw s3, TF_s3(sp)
-    sw s4, TF_s4(sp)
-    sw s5, TF_s5(sp)
-    sw s6, TF_s6(sp)
-    sw s7, TF_s7(sp)
-    sw gp, TF_gp(sp)
-    sw fp, TF_fp(sp)
-    sw ra, TF_ra(sp)
-    mfc0 k0, CP0_STATUS
-    mfc0 k1, CP0_CAUSE
-    sw k0, TF_STATUS(sp)
-    mfc0 k0, CP0_EPC
-    sw k1, TF_CAUSE(sp)
-    sw k0, TF_EPC(sp)
+    // 获取当前线程的中断帧地址
+    la.abs sp, current
+    ld.w sp, sp, 0
 
+    // 保存寄存器到中断帧
+    st.w ra, sp, TF_ra
+    st.w tp, sp, TF_tp
 
-    mfc0 k0, CP0_CAUSE
-    nop
-    andi k1, k0, 0x00FF             // 截取CP0_CAUSE 的ExcCode
-    srl k1, k1, 2
-    ori k0, zero, EX_IRQ            // 硬件中断
-    beq k1, k0, WAKEUPSHELL         // 让主线程控制
-    nop
-    ori k0, zero, EX_SYS            // 系统调用
-    beq k1, k0, SYSCALL             // 内核处理
-    nop
+    // 真正的 sp 保存在 CSR_SAVE0 中
+    csrrd tp, CSR_SAVE0
+    st.w tp, sp, TF_sp
 
-    // 中断处理扩展
+    st.w a0, sp, TF_a0
+    st.w a1, sp, TF_a1
+    st.w a2, sp, TF_a2
+    st.w a3, sp, TF_a3
+    st.w a4, sp, TF_a4
+    st.w a5, sp, TF_a5
+    st.w a6, sp, TF_a6
+    st.w a7, sp, TF_a7
 
-    j FATAL                         // 无法处理的中断，出现严重错误
-    nop
+    st.w t0, sp, TF_t0
+    st.w t1, sp, TF_t1
+    st.w t2, sp, TF_t2
+    st.w t3, sp, TF_t3
+    st.w t4, sp, TF_t4
+    st.w t5, sp, TF_t5
+    st.w t6, sp, TF_t6
+    st.w t7, sp, TF_t7
+    st.w t8, sp, TF_t8
 
+    st.w rsv, sp, TF_rsv
+    st.w fp, sp, TF_fp
 
+    st.w s0, sp, TF_s0
+    st.w s1, sp, TF_s1
+    st.w s2, sp, TF_s2
+    st.w s3, sp, TF_s3
+    st.w s4, sp, TF_s4
+    st.w s5, sp, TF_s5
+    st.w s6, sp, TF_s6
+    st.w s7, sp, TF_s7
+    st.w s8, sp, TF_s8
+
+    csrrd t0, CSR_ECFG
+    st.w t0, sp, TF_ECFG
+
+    csrrd t0, CSR_ERA
+    st.w t0, sp, TF_ERA
+
+    // 判断异常类型 ESTAT.Ecode
+    csrrd t0, CSR_ESTAT
+    srli.w t0, t0, 16
+    andi t0, t0, 0x3F
+
+    // 如果是中断，则切换到主线程
+    li.w t1, EX_IRQ
+    beq t1, t0, WAKEUPSHELL
+
+    // 如果是系统调用
+    li.w t1, EX_SYS
+    beq t1, t0, SYSCALL
+
+    b FATAL                         // 无法处理的中断，出现严重错误
+
+    // 从异常中恢复
 RETURNFRMTRAP:
-    lw k0, TF_STATUS(sp)
-    ori k0, k0, ST0_IE              // 使能中断。通常eret自动取消EXL位。
-    xori k1, k0, ST0_ERL
-    and k0, k0, k1                  // 清除错误位(防止eret出错)
-    lw k1, TF_EPC(sp)
-    mtc0 k0, CP0_STATUS
-    mtc0 k1, CP0_EPC
-    lw AT, TF_AT(sp)                // 从中断帧中恢复k0,k1以外寄存器，上下文
-    lw v0, TF_v0(sp)
-    lw v1, TF_v1(sp)
-    lw a0, TF_a0(sp)
-    lw a1, TF_a1(sp)
-    lw a2, TF_a2(sp)
-    lw a3, TF_a3(sp)
-    lw t0, TF_t0(sp)
-    lw t1, TF_t1(sp)
-    lw t2, TF_t2(sp)
-    lw t3, TF_t3(sp)
-    lw t4, TF_t4(sp)
-    lw t5, TF_t5(sp)
-    lw t6, TF_t6(sp)
-    lw t7, TF_t7(sp)
-    lw t8, TF_t8(sp)
-    lw t9, TF_t9(sp)
-    lw s0, TF_s0(sp)
-    lw s1, TF_s1(sp)
-    lw s2, TF_s2(sp)
-    lw s3, TF_s3(sp)
-    lw s4, TF_s4(sp)
-    lw s5, TF_s5(sp)
-    lw s6, TF_s6(sp)
-    lw s7, TF_s7(sp)
-    lw gp, TF_gp(sp)
-    lw fp, TF_fp(sp)
-    lw ra, TF_ra(sp)
+    // 从中断帧恢复 ERA 和 ECFG
+    ld.w t0, sp, TF_ERA
+    csrwr t0, CSR_ERA
+    ld.w t0, sp, TF_ECFG
+    csrwr t0, CSR_ECFG
 
-    lw sp, TF_sp(sp)                // 从中断帧中恢复
-    eret
-    nop
+    // 从中断帧恢复除了 sp 以外的寄存器
+    ld.w ra, sp, TF_ra
+    ld.w tp, sp, TF_tp
 
+    ld.w a0, sp, TF_a0
+    ld.w a1, sp, TF_a1
+    ld.w a2, sp, TF_a2
+    ld.w a3, sp, TF_a3
+    ld.w a4, sp, TF_a4
+    ld.w a5, sp, TF_a5
+    ld.w a6, sp, TF_a6
+    ld.w a7, sp, TF_a7
+
+    ld.w t0, sp, TF_t0
+    ld.w t1, sp, TF_t1
+    ld.w t2, sp, TF_t2
+    ld.w t3, sp, TF_t3
+    ld.w t4, sp, TF_t4
+    ld.w t5, sp, TF_t5
+    ld.w t6, sp, TF_t6
+    ld.w t7, sp, TF_t7
+    ld.w t8, sp, TF_t8
+
+    ld.w rsv, sp, TF_rsv
+    ld.w fp, sp, TF_fp
+    ld.w s0, sp, TF_s0
+    ld.w s1, sp, TF_s1
+    ld.w s2, sp, TF_s2
+    ld.w s3, sp, TF_s3
+    ld.w s4, sp, TF_s4
+    ld.w s5, sp, TF_s5
+    ld.w s6, sp, TF_s6
+    ld.w s7, sp, TF_s7
+    ld.w s8, sp, TF_s8
+
+    // 最后恢复 sp
+    ld.w sp, sp, TF_sp
+    ertn
 
 
 WAKEUPSHELL:
-    lui t1, %hi(current)
-    lw t1, %lo(current)(t1)         // 取得当前线程TCB地址
-    lui t0, %hi(TCBT)
-    lw t0, %lo(TCBT)(t0)            // 取得idle线程TCB地址
-    nop
-    bne t0, t1, RETURNFRMTRAP       // 若当前是shell/user线程无需调度
-    nop
-    j SCHEDULE                      // 进行调度使主线程获得控制权
-    nop
+    // 获取当前线程 TCB
+    la.abs t1, current
+    ld.w t1, t1, 0
 
+    // 获取 thread0 线程 TCB
+    la.abs t0, TCBT
+    ld.w t0, t0, 0
+
+    // 如果当前线程是 thread1，则直接返回
+    bne t0, t1, RETURNFRMTRAP
+
+    // 如果当前现场是 thread0，则调度到 thread1
+    b SCHEDULE
+
+    // 处理 syscall
 SYSCALL:
-    lw k0, TF_EPC(sp)               // SYSCALL需对EPC特别处理
-    addiu k0, k0, 0x4               // EPC+4,退出中断后执行SYSCALL的下一条语句
-    sw k0, TF_EPC(sp)
-    ori t0, zero, SYS_wait          // 取得wait调用号
-    beq v0, t0, .syscall_wait       // syscall wait
-    nop
-    ori t0, zero, SYS_putc          // 取得putc调用号
-    beq v0, t0, .syscall_putc       // syscall putc
-    nop
+    // ERA 加四，防止重复执行 syscall 指令
+    ld.w t0, sp, TF_ERA
+    addi.w t0, t0, 0x4
+    st.w t0, sp, TF_ERA
 
-    // 系统调用扩展
+    // 如果是 wait 系统调用
+    ld.w t1, sp, TF_a7
+    li.w t0, SYS_wait
+    beq t1, t0, .syscall_wait
 
-    j RETURNFRMTRAP                 // 其他系统调用忽略
-    nop
+    // 如果是 putc 系统调用
+    ld.w t1, sp, TF_a7
+    li.w t0, SYS_putc
+    beq t1, t0, .syscall_putc
+
+    // 结束异常处理
+    b RETURNFRMTRAP
 
 .syscall_wait:
-    j SCHEDULE                      // 调度转交控制权
-    nop
+    // 切换到另一个线程
+    b SCHEDULE
 
 .syscall_putc:
-    jal WRITESERIAL                 // 写串口采用忙等待，不产生嵌套中断
+    // 写串口
+    ld.w a0, sp, TF_a0
+    bl WRITESERIAL
+
+    // 结束异常处理
+    b RETURNFRMTRAP
+#endif
+
+#ifdef ENABLE_TLB
+    .section .text
+    .global TLBREFILL
+TLBREFILL:                          // TLB快速重填
+    mfc0 k1, CP0_CONTEXT
+    lw k0, 0x0(k1)
+    lw k1, 0x8(k1)
+    mtc0 k0, CP0_ENTRYLO0
+    mtc0 k1, CP0_ENTRYLO1
     nop
-    j RETURNFRMTRAP
+    tlbwr
+    eret
     nop
 #endif

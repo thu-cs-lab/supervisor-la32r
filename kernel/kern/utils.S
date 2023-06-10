@@ -1,5 +1,5 @@
 #include <regdef.h>
-#include <mipsregs.h>
+#include <la32regs.h>
 #include <unistd.h>
 
     .p2align 2
@@ -24,10 +24,9 @@ READSERIAL:
     bne t0, zero, .RSERIAL
 
 #ifdef ENABLE_INT
-    // donghy's debug
-    // if interrupt is not enabled, shell will always check COM STATUS
-    ori v0, zero, SYS_wait
-    syscall SYSCALL_BASE
+    // 串口上还没有数据，调用 wait 系统调用
+    li.w a7, SYS_wait
+    syscall 0
 #endif
     b .TESTR
 

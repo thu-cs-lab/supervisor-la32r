@@ -1,6 +1,6 @@
 #ifndef __LIBS_UNISTD_H__
 #define __LIBS_UNISTD_H__
-#include <mipsregs.h>
+#include <la32regs.h>
 
 #define PAGE_SIZE   0x1000          // 4KB页
 #define RAM0UBASE   0x80100000

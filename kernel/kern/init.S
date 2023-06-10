@@ -1,5 +1,5 @@
 #include <regdef.h>
-#include <mipsregs.h>
+#include <la32regs.h>
 #include <unistd.h>
 #include <exception.h>
 
@@ -48,7 +48,8 @@ monitor_version:
     .word   _sbss
     .word   _ebss
 
-    .text
+    // 从 0x80000000 地址启动
+    .section .text.init
     .p2align 2
     .global START
 START:
@@ -64,27 +65,9 @@ bss_init:
 
 bss_init_done:
 #ifdef ENABLE_INT
-    mfc0 t0, CP0_STATUS             // 取得cp0的status Reg
-    nop
-    xori t1, t0, (ST0_IM | ST0_IE | ST0_EXL | ST0_ERL)
-                                    // 取消错误、异常位，使得eret正常
-                                    // 见Vol3p196ERL,错误置位会让eret跳ErEPC
-    and t0, t0, t1                  // status Reg 的IE位和IM位置零
-    mtc0 t0, CP0_STATUS             // 暂停中断响应，直到启动完成
-    nop
-
-    mfc0 t0, CP0_STATUS
-    lui t1, %hi(ST0_BEV)
-    xor t1, t0, t1
-    and t0, t0, t1                  // status Reg 的BEV位置零
-    mtc0 t0, CP0_STATUS             // 中断处理转为正常模式
-    ori t2, zero, PAGE_SIZE
-    mtc0 t2, CP0_EBASE              // 设定中断响应基址为0x8000.1000
-    mfc0 t0, CP0_CAUSE
-    lui t1, %hi(CAUSEF_IV)
-    xor t1, t1, t0
-    and t0, t0, t1                  // Cause IV位置零
-    mtc0 t0, CP0_CAUSE              // 关闭中断特殊入口
+    // 设置异常处理函数
+    la.abs t0, EXCEPTIONHANDLER
+    csrwr t0, CSR_EENTRY
 #endif
 
     // 设置内核栈
@@ -125,15 +108,18 @@ bss_init_done:
     // COM_MCR(4) = 0x0(Data terminal ready)
     li.w t1, 0x00
     st.b t1, t0, 4
+
+    // COM_IER(1) = 0x1(Received data available)
+    li.w t1, 0x01
+    st.b t1, t0, 1
 #endif
 
 #ifdef ENABLE_INT
-    /* enable serial interrupt */
-    mfc0 t0, CP0_STATUS
-    ori t0, t0, STATUSF_IP4         // hardware interrupt source #2, irq #4
-    mtc0 t0, CP0_STATUS
+    // 打开串口中断 IS[3]=1
+    csrrd t0, CSR_ESTAT
+    ori t0, t0, 0x8
+    csrwr t0, CSR_ESTAT
 #endif
-
 
     // 在栈上预留大小为 TF_SIZE 空间且清零
     li.w t0, TF_SIZE / 4
@@ -148,14 +134,13 @@ bss_init_done:
     st.w sp, t0, 0
 
 #ifdef ENABLE_INT
-    mfc0 t1, CP0_STATUS             // 取STATUS
-    mfc0 t2, CP0_CAUSE              // 取CAUSE
-    ori t1, t1, ST0_IE              // 使能中断
-    sw t2, TF_CAUSE(sp)             // 写中断帧CAUSE
-    sw t1, TF_STATUS(sp)            // 写中断帧STATUS; idle线程打开串口硬件中断响应
-    lui t3, %hi(IDLELOOP)
-    addiu t3, %lo(IDLELOOP)       // 取得idle线程入口
-    sw t3, TF_EPC(sp)               // 写中断帧EPC
+    // 在 thread0(idle) 线程中允许串口中断 LIE[3]=1
+    li.w t1, 0x8
+    st.w t1, sp, TF_ECFG
+
+    // 设置 thread0(idle) 用户态入口为 IDLELOOP
+    la.abs t3, IDLELOOP
+    st.w t3, sp, TF_ERA
 #endif
 
     // t6 寄存器保存 idle 中断帧位置
@@ -281,21 +266,10 @@ bss_init_done:
     nop
 #endif
 
-#ifdef ENABLE_INT
-    mfc0 t0, CP0_STATUS             // 取得cp0的status Reg
-    nop
-    ori t0, t0, ST0_IE              // status Reg 的IE位置一
-    xori t1, t0, STATUSF_IP4
-    and t0, t0, t1                  // 主线程屏蔽串口硬件中断
-    mtc0 t0, CP0_STATUS             // 启动完成，恢复中断机制
-    nop
-#endif
-
     // 进入主线程
     b WELCOME
 
-
-
+    .text
 WELCOME:
     // 通过串口发送启动信息
     la.abs s0, monitor_version

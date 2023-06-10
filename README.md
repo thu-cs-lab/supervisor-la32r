@@ -8,7 +8,7 @@
 
 Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduced 规范。Kernel 提供了三种不同的版本，以适应不同的档次的 CPU 实现。它们分别是：第一档为基础版本，直接基本的 I/O 和命令执行功能，不依赖异常、中断等处理器特征，适合于最简单的 CPU 实现；第二档支持中断，使用中断方式完成串口的 I/O 功能，需要处理器实现中断处理机制；第三档在第二档基础上进一步增加了 TLB 的应用，要求处理器支持基于 TLB 的内存映射，更加接近于操作系统对处理器的需求。
 
-为了在硬件上运行 Kernel 程序，我们首先要对 Kernel 的汇编代码进行编译。编译时需要龙芯提供的 LoongArch 32 Reduce 工具链。将下载的压缩包解压到任意目录后，设置环境变量 `GCCPREFIX` 以便 make 工具找到编译器，例如：
+为了在硬件上运行 Kernel 程序，我们首先要对 Kernel 的汇编代码进行编译。编译时需要龙芯提供的 LoongArch 32 Reduced 工具链。将下载的压缩包解压到任意目录后，设置环境变量 `GCCPREFIX` 以便 make 工具找到编译器，例如：
 
 `export GCCPREFIX=/usr/local/loongarch32r-linux-gnusf/bin/loongarch32r-linux-gnusf-gcc`
 
@@ -16,7 +16,7 @@ Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduc
 
 监控程序面向两个平台：QEMU 和 FPGA，通过编译时的参数进行区分：`ON_FPGA=y` 表示面向 FPGA，`ON_FPGA=n` 表示面向 QEMU（默认）。
 
-假设当前目录为 `kernel` ，目标版本为基础版本，在终端中运行命令
+假设当前目录为 `kernel`，目标版本为基础版本，在终端中运行命令
 
 `make ON_FPGA=n`
 
@@ -70,6 +70,11 @@ Kernel 运行后会先通过串口输出版本号，该功能可作为检验其�
 | 0x80400000-0x807EFFFF | 用户数据空间 |
 | 0x807F0000-0x807FFFFF | 监控程序数据 |
 | 0xBFE001E0-0xBFE001E8 | 串口数据及状态 |
+
+要求处理器在启动时配置了如下的直接映射配置：
+
+1. 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF，访问类型为一致可缓存
+2. 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF，访问类型为强序非缓存
 
 串口控制器访问的代码位于 `kern/utils.S`，其寄存器定义与 UART 16550 一致。
 

@@ -1,5 +1,5 @@
 #include <regdef.h>
-#include <mipsregs.h>
+#include <la32regs.h>
 #include <unistd.h>
 #include <exception.h>
 #include <shell.h>
@@ -176,15 +176,16 @@ UTEST_CRYPTONIGHT:
      */
 #ifdef ENABLE_INT
 UTEST_PUTC:
-    ori v0, zero, SYS_putc          // 系统调用号
-    ori a0, zero, 0x4F              // 'O'
-    syscall SYSCALL_BASE
-    nop
-    ori a0, zero, 0x4B              // 'K'
-    syscall SYSCALL_BASE
-    nop
+    // 系统调用号保存在 a7
+    li.w a7, SYS_putc
+    // 参数 'O' 保存在 a0
+    li.w a0, 0x4F
+    syscall 0
+
+    // 参数 'K' 保存在 a0
+    li.w a0, 0x4B
+    syscall 0
     jr ra
-    nop
 #endif
 
 
