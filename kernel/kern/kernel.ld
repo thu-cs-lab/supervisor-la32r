@@ -3,9 +3,6 @@ OUTPUT("kernel.elf")
 OUTPUT_ARCH("loongarch32r")
 OUTPUT_FORMAT("elf32-loongarch")
 
-PROVIDE(SerialData = 0xBFD003F8);
-PROVIDE(SerialStat = 0xBFD003FC);
-
 /* Qemu serial constants */
 PROVIDE(COM1 = 0xBFE001E0);
 PROVIDE(KERNEL_STACK_INIT = 0x80800000);

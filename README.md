@@ -14,11 +14,13 @@ Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduc
 
 下面是编译监控程序的过程。在 `kernel` 文件夹下面，有汇编代码和 Makefile 文件，我们可以使用 make 工具编译 Kernel 程序。
 
-监控程序面向两个平台：QEMU 和 FPGA，通过编译时的参数进行区分：`ON_FPGA=y` 表示面向 FPGA，`ON_FPGA=n` 表示面向 QEMU。
+监控程序面向两个平台：QEMU 和 FPGA，通过编译时的参数进行区分：`ON_FPGA=y` 表示面向 FPGA，`ON_FPGA=n` 表示面向 QEMU（默认）。
 
 假设当前目录为 `kernel` ，目标版本为基础版本，在终端中运行命令
 
-`make ON_FPGA=n` 即可编译面向 QEMU 的监控程序。如果顺利结束，将生成 `kernel.elf` 和 `kernel.bin` 文件。要在模拟器中运行它，可以使用命令
+`make ON_FPGA=n`
+
+即可编译面向 QEMU 的监控程序。如果顺利结束，将生成 `kernel.elf` 和 `kernel.bin` 文件。要在模拟器中运行它，可以使用命令
 
 `make sim`
 
@@ -36,29 +38,25 @@ Kernel 运行后会先通过串口输出版本号，该功能可作为检验其�
 
 ### 基础版本
 
-基础版本的 Kernel 共使用了21条不同的指令，它们是：
+基础版本的 Kernel 共使用了 17 条不同的指令，它们是：
 
-1. `ADDIU` 001001ssssstttttiiiiiiiiiiiiiiii
-1. `ADDU` 000000ssssstttttddddd00000100001
-1. `AND` 000000ssssstttttddddd00000100100
-1. `ANDI` 001100ssssstttttiiiiiiiiiiiiiiii
-1. `BEQ` 000100ssssstttttoooooooooooooooo
-1. `BGTZ` 000111sssss00000oooooooooooooooo
-1. `BNE` 000101ssssstttttoooooooooooooooo
-1. `J` 000010iiiiiiiiiiiiiiiiiiiiiiiiii
-1. `JAL` 000011iiiiiiiiiiiiiiiiiiiiiiiiii
-1. `JR` 000000sssss0000000000hhhhh001000
-1. `LB` 100000bbbbbtttttoooooooooooooooo
-1. `LUI` 00111100000tttttiiiiiiiiiiiiiiii
-1. `LW` 100011bbbbbtttttoooooooooooooooo
-1. `OR` 000000ssssstttttddddd00000100101
-1. `ORI` 001101ssssstttttiiiiiiiiiiiiiiii
-1. `SB` 101000bbbbbtttttoooooooooooooooo
-1. `SLL` 00000000000tttttdddddaaaaa000000
-1. `SRL` 00000000000tttttdddddaaaaa000010
-1. `SW` 101011bbbbbtttttoooooooooooooooo
-1. `XOR` 000000ssssstttttddddd00000100110
-1. `XORI` 001110ssssstttttiiiiiiiiiiiiiiii
+1. `addi.w`
+1. `andi`
+1. `b`
+1. `beq`
+1. `bl`
+1. `bne`
+1. `jirl`
+1. `ld.b`
+1. `ld.w`
+1. `lu12i.w`
+1. `move`
+1. `or`
+1. `ori`
+1. `slli.w`
+1. `srli.w`
+1. `st.b`
+1. `st.w`
 
 根据 LoongArch 32 Reduced 规范正确实现这些指令后，程序才能正常工作。
 
@@ -71,27 +69,21 @@ Kernel 运行后会先通过串口输出版本号，该功能可作为检验其�
 | 0x80100000-0x803FFFFF | 用户代码空间 |
 | 0x80400000-0x807EFFFF | 用户数据空间 |
 | 0x807F0000-0x807FFFFF | 监控程序数据 |
-| 0xBFD003F8-0xBFD003FD | 串口数据及状态|
+| 0xBFE001E0-0xBFE001E8 | 串口数据及状态 |
 
-串口控制器访问的代码位于`kern/utils.S`，其数据格式为：
-
-| 地址 | 位 | 说明 |
-| --- | --- |--- |
-| 0xBFD003F8| [7:0] | 串口数据，读、写地址分别表示串口接收、发送一个字节|
-| 0xBFD003FC| [0] | 只读，为1时表示串口空闲，可发送数据|
-| 0xBFD003FC| [1] | 只读，为1时表示串口收到数据|
+串口控制器访问的代码位于 `kern/utils.S`，其寄存器定义与 UART 16550 一致。
 
 Kernel 的入口地址为 0x80000000，对应汇编代码 `kern/init.S` 中的 `START:` 标签。在完成必要的初始化流程后，Kernel 输出版本信息，随后进入 shell 线程，与用户交互。shell 线程会等待串口输入，执行输入的命令，并通过串口返回结果，如此往复运行。
 
-当收到启动用户程序的命令后，用户线程代替 shell 线程的活动。用户程序的寄存器，保存在从 0x807F0000 到 0x807F0077 的连续 120 字节中，依次对应 \$1 到 \$30 用户寄存器，每次启动用户程序时从上述地址装载寄存器值，用户程序运行结束后保存到上述地址。
+当收到启动用户程序的命令后，用户线程代替 shell 线程的活动。用户程序的寄存器，保存在从 0x807F0000 到 0x807F007B 的连续 124 字节中，依次对应 \$r1 到 \$r31 用户寄存器，每次启动用户程序时从上述地址装载寄存器值，用户程序运行结束后保存到上述地址。
 
 ### 进阶一：中断和异常支持
 
 作为扩展功能之一，Kernel 支持中断方式的 I/O，和 Syscall 功能。要启用这一功能，编译时的命令变为：
 
-`make ON_FPGA=y EN_INT=y`
+`make EN_INT=y`
 
-这一编译选项，会使得代码编译时增加宏定义`ENABLE_INT`，从而使能中断相关的代码。
+这一编译选项，会使得代码编译时增加宏定义 `ENABLE_INT`，从而使能中断相关的代码。
 
 为支持中断，CPU 要额外实现以下指令
 
@@ -301,3 +293,4 @@ Term 程序位于`term`文件夹中，可执行文件为`term.py`。对于本地
 
 - 初始版本：韦毅龙，李成杰，孟子焯
 - 后续维护：张宇翔，董豪宇
+- 移植到 LoongArch 32 Reduced：陈嘉杰

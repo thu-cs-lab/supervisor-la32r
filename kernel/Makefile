@@ -11,7 +11,7 @@ LDSCRIPT	:= kern/kernel.ld
 SRC	:= $(foreach sdir, $(SRCDIR), $(wildcard $(sdir)/*.S))
 OBJ	:= $(patsubst $(SRCDIR)/%.S, $(OBJDIR)/%.o, $(SRC))
 TARGET	:= kernel.elf
-ASFLAG	:= -D__ASSEMBLY__ -g -mcmodel=extreme -fno-plt
+ASFLAG	:= -D__ASSEMBLY__ -g
 
 override ON_FPGA ?= n
 
@@ -56,13 +56,16 @@ $(OBJDIR):
 	test -d $@ || mkdir $@
 
 kernel.bin: $(TARGET)
-	@$(GCCPREFIX)objcopy -j .text -O binary -v $< kernel.bin
+	@$(GCCPREFIX)objcopy -j .text -j .rodata -O binary -v $< kernel.bin
 
 show-utest: $(TARGET)
 	@$(GCCPREFIX)objdump -D $< | grep "^[0-9a-f]\{8\} <UTEST_" | grep -n --color=auto 'UTEST_'
 
 sim: $(TARGET)
 	$(QEMU) -M ls3a5k32 -m 8M -kernel $< -nographic -monitor none -serial tcp::6666,server -s
+
+inst: $(TARGET)
+	@$(GCCPREFIX)objdump -S $(TARGET) -M no-aliases | awk '{print $$3}' | sort | uniq | grep -v section | grep -v format
 
 commits-num:
 	@git log --pretty=format:"commit %H" | grep -c 'commit'

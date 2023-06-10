@@ -39,7 +39,7 @@ PTESTACK:
     .endr
 #endif
 
-    .text
+    .section .rodata
     .p2align 2
 monitor_version:
     .asciz "MONITOR for LA32R - initialized."
@@ -48,6 +48,7 @@ monitor_version:
     .word   _sbss
     .word   _ebss
 
+    .text
     .p2align 2
     .global START
 START:
