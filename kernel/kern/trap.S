@@ -33,11 +33,11 @@ EXCEPTIONHANDLER:
     // 腾出 sp 寄存器
     csrwr sp, CSR_SAVE0
 
-    // 获取当前线程的中断帧地址
+    // 获取当前线程的异常帧地址
     la.abs sp, current
     ld.w sp, sp, 0
 
-    // 保存寄存器到中断帧
+    // 保存寄存器到异常帧
     st.w ra, sp, TF_ra
     st.w tp, sp, TF_tp
 
@@ -103,7 +103,7 @@ EXCEPTIONHANDLER:
 
     // 从异常中恢复
 RETURNFRMTRAP:
-    // 从中断帧恢复 ERA ECFG PRMD
+    // 从异常帧恢复 ERA ECFG PRMD
     ld.w t0, sp, TF_ERA
     csrwr t0, CSR_ERA
     ld.w t0, sp, TF_ECFG
@@ -111,7 +111,7 @@ RETURNFRMTRAP:
     ld.w t0, sp, TF_PRMD
     csrwr t0, CSR_PRMD
 
-    // 从中断帧恢复除了 sp 以外的寄存器
+    // 从异常帧恢复除了 sp 以外的寄存器
     ld.w ra, sp, TF_ra
     ld.w tp, sp, TF_tp
 

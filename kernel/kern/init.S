@@ -114,13 +114,6 @@ bss_init_done:
     st.b t1, t0, 1
 #endif
 
-#ifdef ENABLE_INT
-    // 打开串口中断 IS[3]=1
-    csrrd t0, CSR_ESTAT
-    ori t0, t0, 0x8
-    csrwr t0, CSR_ESTAT
-#endif
-
     // 在栈上预留大小为 TF_SIZE 空间且清零
     li.w t0, TF_SIZE / 4
 .LC0:
@@ -129,7 +122,7 @@ bss_init_done:
     st.w zero, sp, 0
     bne t0, zero, .LC0
 
-    // 把 thread0(idle) 的中断帧地址设为当前栈地址
+    // 把 thread0(idle) 的异常帧地址设为当前栈地址
     la.abs t0, TCBT
     st.w sp, t0, 0
 
@@ -147,7 +140,7 @@ bss_init_done:
     st.w t3, sp, TF_ERA
 #endif
 
-    // t6 寄存器保存 idle 中断帧位置
+    // t6 寄存器保存 idle 异常帧位置
     move t6, sp
 
     // 在栈上预留大小为 TF_SIZE 空间且清零
@@ -158,7 +151,7 @@ bss_init_done:
     st.w zero, sp, 0
     bne t0, zero, .LC1
 
-    // 把 thread1(shell/user) 的中断帧地址设为当前栈地址
+    // 把 thread1(shell/user) 的异常帧地址设为当前栈地址
     la.abs t0, TCBT
     st.w sp, t0, 4
 

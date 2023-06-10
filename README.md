@@ -90,33 +90,42 @@ Kernel 的入口地址为 0x80000000，对应汇编代码 `kern/init.S` 中的 `
 
 这一编译选项，会使得代码编译时增加宏定义 `ENABLE_INT`，从而使能中断相关的代码。
 
-为支持中断，CPU 要额外实现以下指令
+为支持中断和异常，CPU 要额外实现以下指令
 
-1. `ERET` 01000010000000000000000000011000
-1. `MFC0` 01000000000tttttddddd00000000lll
-1. `MTC0` 01000000100tttttddddd00000000lll
-1. `SYSCALL` 000000cccccccccccccccccccc001100
+1. `csrrd`
+1. `csrwr`
+1. `ertn`
+1. `syscall`
 
-此外还需要实现 CP0 寄存器的这些字段：
+此外还需要实现 CSR 寄存器的部分字段：
 
-1. Status: IM4, EXL, IE
-2. Ebase: ExceptionBase
-3. Cause: BD, IP4, ExcCode
-4. EPC
+1. EENTRY：异常入口地址
+2. ESTAT：Ecode（异常类型）
+3. ERA：异常返回地址
+4. ECFG：LIE（使能串口中断，LIE[3]）
+5. PRMD：PIE
+6. CRMD：IE（全局中断使能）
+7. SAVE0
 
-CP0 寄存器字段功能定义参见 MIPS32 特权态规范（在参考文献中）。
+CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在参考文献中）。
+
+进阶一不涉及特权态切换，所有操作都在 PLV0 上进行。
+
+监控程序实现了简单的线程调度，系统中只有两个线程：
+
+1. thread0：idle
+2. thread1：user/shell
+
+启动时，监控程序会运行 thread1。thread1 会尝试从串口读取数据，如果发现没有数据可以读取，就会调用 wait 系统调用，此时监控程序会调度到 thread0。thread0 打开了串口中断，因此当串口上有数据可以读取的时候，监控程序会响应中断，调度到 thread1，thread1 就可以从串口读取数据。
 
 监控程序对于异常、中断的使用方式如下：
 
-- 入口地址 0x80001180，根据异常号跳转至相应的异常处理程序。
-	- 串口硬件中断：中断号为 IP4，作用是唤醒shell线程。为此，shell和用户线程运行时屏蔽串口硬件中断，idle线程中打开。
-	- 系统调用：shell线程调用SYS\_wait，CPU控制权转交idle线程。
-- 异常帧保存29个通用寄存器（k0,k1不保存）及STATUS,CAUSE,EPC三个相关寄存器。32个字，128字节，0x80字节。
+- 异常入口地址设置为 EXCEPTIONHANDLER，只考虑两种异常：
+	- 串口硬件中断：中断号为 3，目的是为了唤醒 thread1(user/shell) 线程。具体地，它仅在 thread0(idle) 线程中打开。
+	- 系统调用：支持两个系统调用：wait 和 putc。当 shell 线程调用 wait 系统调用时，CPU 控制权转交给 thread0(idle) 线程。当 shell 线程调用 putc 系统调用时，会向串口发送 a0 寄存器的低八位。
+- 异常帧保存 31 个通用寄存器及 ECFG、ERA 和 PRMD 三个 CSR。32个字，128字节，0x80字节。
 - 禁止发生嵌套异常。
-- 支持SYS\_wait和SYS\_putc两个系统调用。写串口忙等待，与禁止嵌套异常不冲突。
-- 当发生不能处理的中断时，表示出现严重错误，终止当前任务，自行重启。并且发送错误信号 0x80 提醒TERM。
-- 初始化时设置CP0_STATUS(BEV)=0,CP0_CAUSE(IV)=0,EBase=0x80001000，使用正常中断模式。
-- 初始化时设置CP0_STATUS(ERL)=0，使eret指令以EPC寄存器值为地址跳转。
+- 当发生不能处理的异常时，出现严重错误，终止当前任务，自行重启。并且发送错误信号 0x80 提醒 Term。
 
 ### 进阶二：TLB支持
 
