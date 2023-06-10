@@ -199,7 +199,9 @@ SHELL:
     ld.w $r30, ra, PUTREG(30)
 
 #ifdef ENABLE_INT
-    // 切换特权级，进入用户程序
+    // 进入用户程序，可能切换特权级
+    // 用户程序 ret 后回到 .USERRET2
+    la.abs ra, .USERRET2
     ertn
 #else
     // 读取用户程序入口并跳转

@@ -3,7 +3,7 @@
 set timeout 5
 spawn term/term.py -t 127.0.0.1:6666
 
-expect "MONITOR for MIPS32 - initialized." {} timeout {exit 1}
+expect "MONITOR for LA32R - initialized." {} timeout {exit 1}
 
 expect ">>"
 send "R\n"
@@ -16,13 +16,11 @@ send "A\n"
 send "80100000\n"
 expect "one instruction per line"
 expect "]"
-send "addiu \$2,\$0,1\n"
+send "addi.w \$r12,\$r0,1\n"
 expect "]"
-send "addu \$3,\$2,\$2\n"
+send "add.w \$r13,\$r12,\$r12\n"
 expect "]"
-send "jr \$31\n"
-expect "]"
-send "nop\n"
+send "jr \$r1\n"
 expect "]"
 send "\n"
 
@@ -30,7 +28,7 @@ expect ">>"
 send "D\n"
 send "80100000\n"
 send "16\n"
-expect -re "0x80100000: +0x24020001" {} timeout {exit 1}
+expect -re "0x80100000: +0x0280040c" {} timeout {exit 1}
 
 expect ">>"
 send "U\n"
@@ -44,7 +42,7 @@ expect "elapsed time" {} timeout {exit 1}
 
 expect ">>"
 send "R\n"
-expect -re "R3.+0x00000002"  {} timeout {exit 1}
+expect -re "t1.+0x00000002"  {} timeout {exit 1}
 
 # TLB required
 expect ">>"
