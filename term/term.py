@@ -29,8 +29,7 @@ CMD_ASSEMBLER = CCPREFIX + 'as'
 CMD_DISASSEMBLER = CCPREFIX + 'objdump'
 CMD_BINARY_COPY = CCPREFIX + 'objcopy'
 
-Reg_alias = ['zero', 'AT', 'v0', 'v1', 'a0', 'a1', 'a2', 'a3', 't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 's0', 
-                's1', 's2', 's3', 's4', 's5', 's6', 's7', 't8', 't9/jp', 'k0', 'k1', 'gp', 'sp', 'fp/s8', 'ra']
+Reg_alias = ['zero', 'ra', 'tp', 'sp', 'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 't0', 't1', 't2', 't3', 't4', 't5', 't6', 't7', 't8', 'rsv', 'fp', 's9', 's0', 's1', 's2', 's3', 's4', 's5', 's6', 's7', 's8']
 
 def test_programs():
     tmp = tempfile.NamedTemporaryFile()
@@ -58,7 +57,7 @@ def int_to_byte_string(val):
 def byte_string_to_int(val):
     return struct.unpack('<I', val)[0]
 
-# invoke assembler to compile instructions (in little endian MIPS32)
+# invoke assembler to compile instructions (in little endian loongarch 32 reduced)
 # returns a byte string of encoded instructions, from lowest byte to highest byte
 # returns empty string on failure (in which case assembler messages are printed to stdout)
 def multi_line_asm(instr):
@@ -72,7 +71,7 @@ def multi_line_asm(instr):
         tmp_obj.close()
         tmp_binary.close()
         subprocess.check_output([
-            CMD_ASSEMBLER, '-EL', '-mips32r2', tmp_asm.name, '-o', tmp_obj.name])
+            CMD_ASSEMBLER, '-mabi=ilp32', tmp_asm.name, '-o', tmp_obj.name])
         subprocess.check_call([
             CMD_BINARY_COPY, '-j', '.text', '-O', 'binary', tmp_obj.name, tmp_binary.name])
         with open(tmp_binary.name, 'rb') as f:
@@ -103,7 +102,7 @@ def single_line_disassmble(binary_instr, addr):
     raw_output = subprocess.check_output([
         CMD_DISASSEMBLER, '-D', '-b', 'binary',
         '--adjust-vma=' + str(addr),
-        '-m', 'mips:isa32r2', tmp_binary.name])
+        '-m', 'loongarch32r', tmp_binary.name])
     # the last line should be something like:
     #    0:   21107f00        addu    v0,v1,ra
     result = raw_output.strip().split(b'\n')[-1].split(None, 2)[-1]
@@ -139,7 +138,7 @@ def run_A(addr):
     print("one instruction per line, empty line to end.")
     offset = addr & 0xfffffff
     prompt_addr = addr
-    asm = ".set noreorder\n.set noat\n.org {:#x}\n".format(offset)
+    asm = ".org {:#x}\n".format(offset)
     while True:
         try:
             line = raw_input('[0x%04x] ' % prompt_addr).strip()
@@ -155,7 +154,7 @@ def run_A(addr):
         try:
             asm += ".word {:#x}\n".format(int(line, 16))
         except ValueError:
-            instr = multi_line_asm(".set noat\n" + line)
+            instr = multi_line_asm(line)
             if instr == '':
                 continue
             asm += line + "\n"
@@ -175,7 +174,7 @@ def run_F(addr, file_name):
         return
     print("reading from file %s" % file_name)
     offset = addr & 0xfffffff
-    asm = ".set noreorder\n.set noat\n.org {:#x}\n".format(offset)
+    asm = ".org {:#x}\n".format(offset)
     binary = multi_line_asm(asm)
     for i in range(offset, len(binary), 4):
         outp.write(b'A')
@@ -187,7 +186,7 @@ def run_F(addr, file_name):
 
 def run_R():
     outp.write(b'R')
-    for i in range(1, 31):
+    for i in range(1, 32):
         val_raw = inp.read(4)
         val = byte_string_to_int(val_raw)
         print('R{0}{1:7} = 0x{2:0>8x}'.format(
@@ -387,7 +386,7 @@ def InitializeTCP(host_port):
 if __name__ == "__main__":
     # para = '127.0.0.1:6666' if len(sys.argv) != 2 else sys.argv[1]
 
-    parser = argparse.ArgumentParser(description = 'Term for mips32 expirence.')
+    parser = argparse.ArgumentParser(description = 'Term for loongarch 32 reduced expirence.')
     parser.add_argument('-c', '--continued', action='store_true', help='Term will not wait for welcome if this flag is set')
     parser.add_argument('-t', '--tcp', default=None, help='TCP server address:port for communication')
     parser.add_argument('-s', '--serial', default=None, help='Serial port name (e.g. /dev/ttyACM0, COM3)')

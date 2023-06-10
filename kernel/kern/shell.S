@@ -90,7 +90,7 @@ SHELL:
 .OP_R:
     // 打印 uregs 124 字节
     la.abs s0, uregs
-    li.w s1, 120
+    li.w s1, 124
 .LC0:
     ld.b a0, s0, 0
     bl WRITESERIAL
