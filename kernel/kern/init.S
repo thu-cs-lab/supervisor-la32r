@@ -138,6 +138,10 @@ bss_init_done:
     li.w t1, 0x8
     st.w t1, sp, TF_ECFG
 
+    // 在 thread0(idle) 线程中打开全局中断 PIE=1 且运行在特权态 PPLV=0
+    li.w t1, 0x4
+    st.w t1, sp, TF_PRMD
+
     // 设置 thread0(idle) 用户态入口为 IDLELOOP
     la.abs t3, IDLELOOP
     st.w t3, sp, TF_ERA

@@ -4,7 +4,7 @@
 #define EX_IRQ      0       /* Interrupt */
 #define EX_SYS      11      /* Syscall */
 
-#define TF_SIZE     0x84    /* trap frame size */
+#define TF_SIZE     0x88    /* trap frame size */
 
 #define TF_ra       0x00
 #define TF_tp       0x04
@@ -39,6 +39,7 @@
 #define TF_s8       0x78
 #define TF_ECFG     0x7C
 #define TF_ERA      0x80
+#define TF_PRMD     0x84
 
 
 #endif

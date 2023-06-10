@@ -64,6 +64,9 @@ show-utest: $(TARGET)
 sim: $(TARGET)
 	$(QEMU) -M ls3a5k32 -m 8M -kernel $< -nographic -monitor none -serial tcp::6666,server -s
 
+debug: $(TARGET)
+	$(QEMU) -M ls3a5k32 -m 8M -kernel $< -nographic -monitor none -serial tcp::6666,server -S -s
+
 inst: $(TARGET)
 	@$(GCCPREFIX)objdump -S $(TARGET) -M no-aliases | awk '{print $$3}' | sort | uniq | grep -v section | grep -v format
 

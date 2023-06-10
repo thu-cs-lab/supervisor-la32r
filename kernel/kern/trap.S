@@ -83,6 +83,9 @@ EXCEPTIONHANDLER:
     csrrd t0, CSR_ERA
     st.w t0, sp, TF_ERA
 
+    csrrd t0, CSR_PRMD
+    st.w t0, sp, TF_PRMD
+
     // 判断异常类型 ESTAT.Ecode
     csrrd t0, CSR_ESTAT
     srli.w t0, t0, 16
@@ -100,11 +103,13 @@ EXCEPTIONHANDLER:
 
     // 从异常中恢复
 RETURNFRMTRAP:
-    // 从中断帧恢复 ERA 和 ECFG
+    // 从中断帧恢复 ERA ECFG PRMD
     ld.w t0, sp, TF_ERA
     csrwr t0, CSR_ERA
     ld.w t0, sp, TF_ECFG
     csrwr t0, CSR_ECFG
+    ld.w t0, sp, TF_PRMD
+    csrwr t0, CSR_PRMD
 
     // 从中断帧恢复除了 sp 以外的寄存器
     ld.w ra, sp, TF_ra
