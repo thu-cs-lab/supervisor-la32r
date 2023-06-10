@@ -76,6 +76,8 @@ Kernel 运行后会先通过串口输出版本号，该功能可作为检验其�
 1. 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF，访问类型为一致可缓存
 2. 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF，访问类型为强序非缓存
 
+如果实现了 CSR.DMW，复位时 CSR.DMW0/1 的取值要对应上述直接映射配置。
+
 串口控制器访问的代码位于 `kern/utils.S`，其寄存器定义与 UART 16550 一致。
 
 Kernel 的入口地址为 0x80000000，对应汇编代码 `kern/init.S` 中的 `START:` 标签。在完成必要的初始化流程后，Kernel 输出版本信息，随后进入 shell 线程，与用户交互。shell 线程会等待串口输入，执行输入的命令，并通过串口返回结果，如此往复运行。
@@ -99,13 +101,13 @@ Kernel 的入口地址为 0x80000000，对应汇编代码 `kern/init.S` 中的 `
 
 此外还需要实现 CSR 寄存器的部分字段：
 
-1. EENTRY：异常入口地址
-2. ESTAT：Ecode（异常类型）
-3. ERA：异常返回地址
-4. ECFG：LIE（使能串口中断，LIE[3]）
-5. PRMD：PIE
-6. CRMD：IE（全局中断使能）
-7. SAVE0
+1. CSR.EENTRY：异常入口地址
+2. CSR.ESTAT：Ecode（异常类型）
+3. CSR.ERA：异常返回地址
+4. CSR.ECFG：LIE（使能串口中断，LIE[3]，复位值为 0）
+5. CSR.PRMD：PIE
+6. CSR.CRMD：IE（全局中断使能，复位值为 0）
+7. CSR.SAVE0
 
 CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在参考文献中）。
 
@@ -113,8 +115,8 @@ CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在
 
 监控程序实现了简单的线程调度，系统中只有两个线程：
 
-1. thread0：idle，响应串口中断（CRMD.IE=1，ECFG.LIE[3]=1）
-2. thread1：user/shell，不响应中断（CRMD.IE=0，ECFG.LIE[3]=0）
+1. thread0：idle，响应串口中断（CSR.CRMD.IE=1，CSR.ECFG.LIE[3]=1）
+2. thread1：user/shell，不响应中断（CSR.CRMD.IE=0，CSR.ECFG.LIE[3]=0）
 
 启动时，监控程序会运行 thread1。thread1 会尝试从串口读取数据，如果发现没有数据可以读取，就会调用 wait 系统调用，此时监控程序会调度到 thread0。thread0 打开了串口中断，因此当串口上有数据可以读取的时候，监控程序会响应中断，调度到 thread1，thread1 就可以从串口读取数据。
 
@@ -123,7 +125,7 @@ CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在
 - 异常入口地址设置为 EXCEPTIONHANDLER，只考虑两种异常：
 	- 串口硬件中断：中断号为 3，目的是为了唤醒 thread1(user/shell) 线程。具体地，它仅在 thread0(idle) 线程中打开。
 	- 系统调用：支持两个系统调用：wait 和 putc。当 shell 线程调用 wait 系统调用时，CPU 控制权转交给 thread0(idle) 线程。当 shell 线程调用 putc 系统调用时，会向串口发送 a0 寄存器的低八位。
-- 异常帧保存 31 个通用寄存器及 ECFG、ERA 和 PRMD 三个 CSR。
+- 异常帧保存 31 个通用寄存器及 CSR.ECFG、CSR.ERA 和 CSR.PRMD 三个 CSR。
 - 禁止发生嵌套异常。
 - 当发生不能处理的异常时，出现严重错误，终止当前任务，自行重启。并且发送错误信号 0x80 提醒 Term。
 
