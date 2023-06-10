@@ -34,9 +34,8 @@
 #define t6	$r18
 #define t7	$r19
 #define t8	$r20
-#define rsv	$r21	/* reserved */
+#define x	$r21	/* reserved */
 #define fp	$r22	/* frame pointer */
-#define s9	$r22	/* callee saved */
 #define s0	$r23
 #define s1	$r24
 #define s2	$r25

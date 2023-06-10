@@ -26,7 +26,7 @@
 #define TF_t6       0x44
 #define TF_t7       0x48
 #define TF_t8       0x4C
-#define TF_rsv      0x50
+#define TF_x        0x50
 #define TF_fp       0x54
 #define TF_s0       0x58
 #define TF_s1       0x5C

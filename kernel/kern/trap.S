@@ -64,7 +64,7 @@ EXCEPTIONHANDLER:
     st.w t7, sp, TF_t7
     st.w t8, sp, TF_t8
 
-    st.w rsv, sp, TF_rsv
+    st.w x, sp, TF_x
     st.w fp, sp, TF_fp
 
     st.w s0, sp, TF_s0
@@ -134,7 +134,7 @@ RETURNFRMTRAP:
     ld.w t7, sp, TF_t7
     ld.w t8, sp, TF_t8
 
-    ld.w rsv, sp, TF_rsv
+    ld.w x, sp, TF_x
     ld.w fp, sp, TF_fp
     ld.w s0, sp, TF_s0
     ld.w s1, sp, TF_s1
