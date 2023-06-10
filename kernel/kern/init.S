@@ -44,10 +44,6 @@ PTESTACK:
 monitor_version:
     .asciz "MONITOR for LA32R - initialized."
 
-    // .bss 段的起始和结束地址，见 kernel.ld
-    .word   _sbss
-    .word   _ebss
-
     // 从 0x80000000 地址启动
     .section .text.init
     .p2align 2
