@@ -1,12 +1,6 @@
 RM	:= rm -f
-ifeq ($(OS),Windows_NT)
-# Windows Host
-GCCPREFIX	?= mips-mti-elf-
-else
-#GCCPREFIX	:= mipsel-linux-gnu-
-GCCPREFIX	?= mips-mti-elf-
-endif
-QEMU := qemu-system-mipsel
+GCCPREFIX	?= loongarch32r-linux-gnusf-
+QEMU := qemu-system-loongarch32
 LD	:= $(GCCPREFIX)ld
 CC	:= $(GCCPREFIX)gcc
 MODULE	:= init
@@ -17,7 +11,7 @@ LDSCRIPT	:= kern/kernel.ld
 SRC	:= $(foreach sdir, $(SRCDIR), $(wildcard $(sdir)/*.S))
 OBJ	:= $(patsubst $(SRCDIR)/%.S, $(OBJDIR)/%.o, $(SRC))
 TARGET	:= kernel.elf
-ASFLAG	:= -D__ASSEMBLY__ -EL -g -mips32r2 -mno-abicalls -mno-shared
+ASFLAG	:= -D__ASSEMBLY__ -g -mcmodel=extreme -fno-plt
 
 override ON_FPGA ?= n
 
@@ -68,7 +62,7 @@ show-utest: $(TARGET)
 	@$(GCCPREFIX)objdump -D $< | grep "^[0-9a-f]\{8\} <UTEST_" | grep -n --color=auto 'UTEST_'
 
 sim: $(TARGET)
-	$(QEMU) -M mipssim -m 8M -kernel $< -nographic -monitor none -serial tcp::6666,server -s
+	$(QEMU) -M ls3a5k32 -m 8M -kernel $< -nographic -monitor none -serial tcp::6666,server -s
 
 commits-num:
 	@git log --pretty=format:"commit %H" | grep -c 'commit'

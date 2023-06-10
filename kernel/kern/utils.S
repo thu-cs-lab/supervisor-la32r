@@ -2,115 +2,87 @@
 #include <mipsregs.h>
 #include <unistd.h>
 
-    .set noreorder
-    .set noat
     .p2align 2
     .text
     .global WRITESERIAL
     .global READSERIAL
     .global READSERIALWORD
 
-WRITESERIAL:                        // 写串口：将a0的低八位写入串口
-#ifdef MACH_FPGA
-    lui t1, %hi(SerialStat)
-.TESTW:
-    lb t0, %lo(SerialStat)(t1)      // 查看串口状态
-    andi t0, t0, 0x0001             // 截取写状态位
-    bne t0, zero, .WSERIAL          // 状态位非零可写进入写
-    nop
-    j .TESTW                        // 检测验证，忙等待
-    nop
-.WSERIAL:
-    lui t1, %hi(SerialData)
-    sb a0, %lo(SerialData)(t1)      // 写入
+    // 写串口：将 a0 的低八位写入串口
+WRITESERIAL:
+    la.abs t1, COM1
+    st.b a0, t1, 0
     jr ra
-    nop
-#else
-    lui t1, %hi(COM1)
-    sb a0, %lo(COM1)(t1)
-    jr ra
-    nop
-#endif
 
-READSERIAL:                         // 读串口：将读到的数据写入v0低八位
-#ifdef MACH_FPGA
-    lui t1, %hi(SerialStat)
+    // 读串口：将读到的数据写入 a0 低八位
+READSERIAL:
+    la.abs t1, COM1
 .TESTR:
-    lb t0, %lo(SerialStat)(t1)      // 查看串口状态
-    andi t0, t0, 0x0002             // 截取读状态位
-    bne t0, zero, .RSERIAL          // 状态位非零可读进入读
-    nop
-#ifdef ENABLE_INT
-    ori v0, zero, SYS_wait          // 取得wait调用号
-    syscall SYSCALL_BASE            // 睡眠等待
-#endif
-    j .TESTR                        // 检测验证
-    nop
-.RSERIAL:
-    lui t1, %hi(SerialData)
-    lb v0, %lo(SerialData)(t1)      // 读出
-    jr ra
-    nop
-#else //ifdef MACH_FPGA
-    lui t1, %hi(COM1)
-.TESTR:
-    lb t0, %lo(COM_LSR)(t1)
-    andi t0, t0, COM_LSR_DATA
+    // COM_LSR(5), 0x01(Data available)
+    ld.b t0, t1, 5
+    andi t0, t0, 0x1
     bne t0, zero, .RSERIAL
-    nop
+
 #ifdef ENABLE_INT
     // donghy's debug
     // if interrupt is not enabled, shell will always check COM STATUS
     ori v0, zero, SYS_wait
     syscall SYSCALL_BASE
 #endif
-    j .TESTR
-    nop
+    b .TESTR
+
 .RSERIAL:
-    lui t1, %hi(COM1)
-    lb v0, %lo(COM1)(t1)
+    la.abs t1, COM1
+    // COM_RBR
+    ld.b a0, t1, 0
     jr ra
-    nop
-#endif //ifdef MACH_FPGA
 
+    // 读串口：将读到的四字节数据写入 a0
 READSERIALWORD:
-    addiu sp, sp, -0x14             // 保存ra,s0
-    sw ra, 0x0(sp)
-    sw s0, 0x4(sp)
-    sw s1, 0x8(sp)
-    sw s2, 0xC(sp)
-    sw s3, 0x10(sp)
+    // 保存寄存器
+    addi.w sp, sp, -0x14
+    st.w ra, sp, 0x0
+    st.w s0, sp, 0x4
+    st.w s1, sp, 0x8
+    st.w s2, sp, 0xC
+    st.w s3, sp, 0x10
 
-    jal READSERIAL                  // 读串口获得八个比特
-    nop
-    or s0, zero, v0                 // 结果存入s0
-    jal READSERIAL                  // 读串口获得八个比特
-    nop
-    or s1, zero, v0                 // 结果存入s1
-    jal READSERIAL                  // 读串口获得八个比特
-    nop
-    or s2, zero, v0                 // 结果存入s2
-    jal READSERIAL                  // 读串口获得八个比特
-    nop
-    or s3, zero, v0                 // 结果存入s3
+    // 读串口获得八个比特，结果存入 s0
+    bl READSERIAL
+    move s0, a0
 
-    andi s0, s0, 0x00FF             // 截取低八位
+    // 读串口获得八个比特，结果存入 s1
+    bl READSERIAL
+    move s1, a0
+
+    // 读串口获得八个比特，结果存入 s2
+    bl READSERIAL
+    move s2, a0
+
+    // 读串口获得八个比特，结果存入 s3
+    bl READSERIAL
+    move s3, a0
+
+    // 截取低八位
+    andi s0, s0, 0x00FF
     andi s3, s3, 0x00FF
     andi s2, s2, 0x00FF
     andi s1, s1, 0x00FF
-    or v0, zero, s3                 // 存高八位
-    sll v0, v0, 8                   // 左移
-    or v0, v0, s2                   // 存八位
-    sll v0, v0, 8                   // 左移
-    or v0, v0, s1                   // 存八位
-    sll v0, v0, 8                   // 左移
-    or v0, v0, s0                   // 存低八位
 
-    lw ra, 0x0(sp)                  // 恢复ra,s0
-    lw s0, 0x4(sp)
-    lw s1, 0x8(sp)
-    lw s2, 0xC(sp)
-    lw s3, 0x10(sp)
-    addiu sp, sp, 0x14
+    // 组合成一个 32 位数
+    or a0, zero, s3                 // 存高八位
+    slli.w a0, a0, 8                // 左移
+    or a0, a0, s2                   // 存八位
+    slli.w a0, a0, 8                // 左移
+    or a0, a0, s1                   // 存八位
+    slli.w a0, a0, 8                // 左移
+    or a0, a0, s0                   // 存低八位
+
+    // 恢复寄存器
+    ld.w ra, sp, 0x0
+    ld.w s0, sp, 0x4
+    ld.w s1, sp, 0x8
+    ld.w s2, sp, 0xC
+    ld.w s3, sp, 0x10
+    addi.w sp, sp, 0x14
     jr ra
-    nop

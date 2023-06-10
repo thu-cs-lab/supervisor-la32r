@@ -2,16 +2,14 @@
 #include <mipsregs.h> 
 
 
-    .set noreorder
-    .set noat
+    // 从 0x80000000 地址启动
     .p2align 2
     .section .text.init
     .global INITLOCATE
-INITLOCATE:                         // 定位启动程序
-    lui k0, %hi(START)
-    addiu k0, %lo(START)
-    jr k0
-    nop
+INITLOCATE:
+    // 跳转到真正的启动程序
+    la.abs t0, START
+    jr t0
 
 // 以下是异常处理的代码
 
@@ -38,6 +36,3 @@ TLBREFILL:                          // TLB快速重填
     nop
 #endif
 
-
-    .set reorder
-    .set at

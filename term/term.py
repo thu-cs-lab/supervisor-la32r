@@ -22,7 +22,7 @@ except:
 try: type(raw_input)
 except NameError: raw_input = input
 
-CCPREFIX = "mips-mti-elf-"
+CCPREFIX = "loongarch32r-linux-gnusf-"
 if 'GCCPREFIX' in os.environ:
     CCPREFIX=os.environ['GCCPREFIX']
 CMD_ASSEMBLER = CCPREFIX + 'as'
@@ -309,7 +309,7 @@ def Main(welcome_message=True):
     #debug
     # welcome_message = False
     if welcome_message:
-        output_binary(inp.read(33))
+        output_binary(inp.read(32))
         print('')
     MainLoop()
 

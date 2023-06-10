@@ -1,13 +1,11 @@
 #include <regdef.h>
 #include <mipsregs.h> 
 
-    .set noreorder
-    .set noat
     .p2align 2
     .text
     .global SCHEDULE
 
-/* 本文件仅在启用异常处理时有用 */
+// 本文件仅在启用异常处理时有用
 
 SCHEDULE:                           
 #ifdef ENABLE_INT                             
@@ -31,5 +29,3 @@ SCHEDULE:
     nop
 #endif
 
-    .set reorder
-    .set at

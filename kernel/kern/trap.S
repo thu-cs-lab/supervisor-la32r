@@ -3,8 +3,6 @@
 #include <unistd.h>
 #include <exception.h>
 
-    .set noreorder
-    .set noat
     .p2align 2
     .text
     .global EXCEPTIONHANDLER
@@ -178,8 +176,3 @@ SYSCALL:
     j RETURNFRMTRAP
     nop
 #endif
-
-
-
-    .set reorder
-    .set at

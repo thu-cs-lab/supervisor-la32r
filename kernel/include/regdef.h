@@ -10,45 +10,42 @@
 #ifndef _ASM_REGDEF_H
 #define _ASM_REGDEF_H
 
-
-
 /*
  * Symbolic register names for 32 bit ABI
  */
-#define zero	$0	/* wired zero */
-#define AT	$1	/* assembler temp  - uppercase because of ".set at" */
-#define v0	$2	/* return value */
-#define v1	$3
-#define a0	$4	/* argument registers */
-#define a1	$5
-#define a2	$6
-#define a3	$7
-#define t0	$8	/* caller saved */
-#define t1	$9
-#define t2	$10
-#define t3	$11
-#define t4	$12
-#define t5	$13
-#define t6	$14
-#define t7	$15
-#define s0	$16	/* callee saved */
-#define s1	$17
-#define s2	$18
-#define s3	$19
-#define s4	$20
-#define s5	$21
-#define s6	$22
-#define s7	$23
-#define t8	$24	/* caller saved */
-#define t9	$25
-#define jp	$25	/* PIC jump register */
-#define k0	$26	/* kernel scratch */
-#define k1	$27
-#define gp	$28	/* global pointer */
-#define sp	$29	/* stack pointer */
-#define fp	$30	/* frame pointer */
-#define s8	$30	/* same like fp! */
-#define ra	$31	/* return address */
+#define zero	$r0	/* wired zero */
+#define ra	$r1	/* return address */
+#define tp	$r2	/* thread pointer */
+#define sp	$r3	/* stack pointer */
+#define a0	$r4	/* argument registers */
+#define a1	$r5
+#define a2	$r6
+#define a3	$r7
+#define a4	$r8
+#define a5	$r9
+#define a6	$r10
+#define a7	$r11
+#define t0	$r12	/* caller saved */
+#define t1	$r13
+#define t2	$r14
+#define t3	$r15
+#define t4	$r16
+#define t5	$r17
+#define t6	$r18
+#define t7	$r19
+#define t8	$r20
+#define rsv	$r21	/* reserved */
+#define fp	$r22	/* frame pointer */
+#define s9	$r22	/* callee saved */
+#define s0	$r23
+#define s1	$r24
+#define s2	$r25
+#define s3	$r26
+#define s4	$r27
+#define s5	$r28
+#define s6	$r29
+#define s7	$r30
+#define s8	$r31
 
 
 

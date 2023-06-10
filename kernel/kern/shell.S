@@ -2,14 +2,12 @@
 #include <mipsregs.h> 
 #include <shell.h>
 
-    .set noreorder
-    .set noat
-
     .section .bss.uregs
     .p2align 2
     .global uregs
 uregs:
-    .rept 32                        // 第31个为用户程序入口地址临时保存
+    // 保存 31 个通用寄存器以及用户程序入口地址临时保存
+    .rept 32
     .long 0
     .endr
 
@@ -17,40 +15,39 @@ uregs:
     .p2align 2
     .global SHELL
 
-    /*
-     *  SHELL: 监控程序交互模块
-     * 
-     *  用户空间寄存器：$1-$30依次保存在0x807F0000连续120字节
-     *  用户程序入口临时存储：0x807F0078
-     */
+    //  SHELL: 监控程序交互模块
+    // 
+    //  用户空间寄存器：$r1-$r31 依次保存在 0x807F0000 连续 124 字节
+    //  用户程序入口临时存储：0x807F007C
 SHELL:
-    jal READSERIAL                  // 读操作符
-    nop
+    // 从 Term 程序读取操作
+    bl READSERIAL
 
-    ori t0, zero, SH_OP_R
-    beq v0, t0, .OP_R
-    nop
-    ori t0, zero, SH_OP_D
-    beq v0, t0, .OP_D
-    nop
-    ori t0, zero, SH_OP_A
-    beq v0, t0, .OP_A
-    nop
-    ori t0, zero, SH_OP_G
-    beq v0, t0, .OP_G
-    nop
-    ori t0, zero, SH_OP_T
-    beq v0, t0, .OP_T
-    nop
-    j .DONE                         // 错误的操作符，默认忽略
-    nop
+    li.w t0, SH_OP_R
+    beq a0, t0, .OP_R
 
-.OP_T:                              // 操作 - 打印TLB项
-    jal READSERIALWORD              // 取num(index)
-    nop
-    addiu sp, sp, -0x18
-    sw s0, 0x0(sp)
-    sw s1, 0x4(sp)
+    li.w t0, SH_OP_D
+    beq a0, t0, .OP_D
+
+    li.w t0, SH_OP_A
+    beq a0, t0, .OP_A
+
+    li.w t0, SH_OP_G
+    beq a0, t0, .OP_G
+
+    li.w t0, SH_OP_T
+    beq a0, t0, .OP_T
+
+    // 错误的操作符，忽略错误
+    b .DONE
+
+    // 操作 - 打印 TLB 项
+.OP_T:
+    // 从 Term 读取 TLB Index
+    bl READSERIALWORD
+
+    // 分配栈空间
+    addi.w sp, sp, -0x18
 
 #ifdef ENABLE_TLB
     mtc0 v0, CP0_INDEX              // 写入index
@@ -67,216 +64,194 @@ SHELL:
     mtc0 s1, CP0_ENTRYHI            // 写回ASID
     nop
 #else
-    addiu s0, zero, -1              // 不支持TLB则返回全1
-    sw s0, 0xC(sp)
-    sw s0, 0x10(sp)
-    sw s0, 0x14(sp)
+    // 不支持 TLB 则返回全1
+    li.w s0, -1
+    st.w s0, sp, 0xC
+    st.w s0, sp, 0x10
+    st.w s0, sp, 0x14
 #endif
 
-    ori s1, zero, 0xC               // 打印12字节
-    addiu s0, sp, 0xC               // ENTRYHI位置
+    // 打印栈上的 12 字节数据
+    li.w s1, 0xC
+    // 起始地址
+    addi.w s0, sp, 0xC
 .LC3:
-    lb a0, 0x0(s0)                  // 读一字节
-    addiu s1, s1, -1                // 滚动计数器
-    jal WRITESERIAL                 // 打印
-    nop
-    addiu s0, s0, 1                 // 移动打印指针
-    bne s1, zero, .LC3              // 打印循环
-    nop
+    ld.w a0, s0, 0
+    bl WRITESERIAL
+    addi.w s1, s1, -1
+    addi.w s0, s0, 1
+    bne s1, zero, .LC3
 
-    lw s0, 0x0(sp)
-    lw s1, 0x4(sp)
-    addiu sp, sp, 0x18
+    addi.w sp, sp, 0x18
 
-    j .DONE
-    nop
+    b .DONE
 
-.OP_R:                              // 操作 - 打印用户空间寄存器
-    addiu sp, sp, -8                // 保存s0,s1
-    sw s0, 0(sp)
-    sw s1, 4(sp)
-
-    lui s0, %hi(uregs)
-    ori s1, zero, 120               // 计数器，打印120字节
+    // 操作 - 打印用户空间寄存器
+.OP_R:
+    // 打印 uregs 124 字节
+    la.abs s0, uregs
+    li.w s1, 120
 .LC0:
-    lb a0, %lo(uregs)(s0)           // 读取字节
-    addiu s1, s1, -1                // 滚动计数器
-    jal WRITESERIAL                 // 写入串口
-    nop
-    addiu s0, s0, 0x1               // 移动打印指针
-    bne s1, zero, .LC0              // 打印循环
-    nop
+    ld.b a0, s0, 0
+    bl WRITESERIAL
+    addi.w s1, s1, -1
+    addi.w s0, s0, 1
+    bne s1, zero, .LC0
 
-    lw s0, 0(sp)                    // 恢复s0,s1
-    lw s1, 4(sp)
-    addiu sp, sp, 8
-    j .DONE
-    nop
+    b .DONE
 
-.OP_D:                              // 操作 - 打印内存num字节
-    addiu sp, sp, -8                // 保存s0,s1
-    sw s0, 0(sp)
-    sw s1, 4(sp)
+    // 操作 - 打印内存 num 字节
+.OP_D:
 
-    jal READSERIALWORD
-    nop
-    or s0, v0, zero                 // 获得addr
-    jal READSERIALWORD
-    nop
-    or s1, v0, zero                 // 获得num
+    // 从 Term 读取起始地址
+    bl READSERIALWORD
+    move s0, a0
 
+    // 从 Term 读取 num
+    bl READSERIALWORD
+    move s1, a0
+
+    // 循环读取内存，发送数据到串口
 .LC1:
-    lb a0, 0(s0)                    // 读取字节
-    addiu s1, s1, -1                // 滚动计数器
-    jal WRITESERIAL                 // 写入串口
-    nop
-    addiu s0, s0, 0x1               // 移动打印指针
-    bne s1, zero, .LC1              // 打印循环
-    nop
+    ld.b a0, s0, 0
+    bl WRITESERIAL
+    addi.w s1, s1, -1
+    addi.w s0, s0, 1
+    bne s1, zero, .LC1
 
-    lw s0, 0(sp)                    // 恢复s0,s1
-    lw s1, 4(sp)
-    addiu sp, sp, 8
-    j .DONE
-    nop
+    b .DONE
 
-.OP_A:                              // 操作 - 写入内存num字节，num为4的倍数
-    addiu sp, sp, -8                // 保存s0,s1
-    sw s0, 0(sp)
-    sw s1, 4(sp)
+    // 操作 - 写入内存 num 字节，num 要求为 4 的倍数
+.OP_A:
 
-    jal READSERIALWORD
-    nop
-    or s0, v0, zero                 // 获得addr
-    jal READSERIALWORD
-    nop
-    or s1, v0, zero                 // 获得num
-    srl s1, s1, 2                   // num除4，获得字数
-.LC2:                               // 每次写入一字
-    jal READSERIALWORD              // 从串口读入一字
-    nop
-    sw v0, 0(s0)                    // 写内存一字
-    addiu s1, s1, -1                // 滚动计数器
-    addiu s0, s0, 4                 // 移动写指针
-    bne s1, zero, .LC2              // 写循环
-    nop
+    // 从 Term 读取起始地址
+    bl READSERIALWORD
+    move s0, a0
 
-    lw s0, 0(sp)                    // 恢复s0,s1
-    lw s1, 4(sp)
-    addiu sp, sp, 8
-    j .DONE
-    nop
+    // 从 Term 读取 num
+    bl READSERIALWORD
+    move s1, a0
 
+    // 每次循环处理 4 个字节，循环次数等于 num / 4
+    srli.w s1, s1, 2
+.LC2:
+    // 从串口读取 4 个字节
+    bl READSERIALWORD
+    st.w a0, s0, 0
+    addi.w s1, s1, -1
+    addi.w s0, s0, 4
+    bne s1, zero, .LC2
+
+    b .DONE
+
+    // 操作 - 运行用户程序
 .OP_G:
-    jal READSERIALWORD              // 获取addr
-    nop
+    // 从 Term 获取用户程序地址
+    bl READSERIALWORD
+    move s0, a0
 
-    ori a0, zero, TIMERSET          // 写TIMERSET(0x06)信号
-    jal WRITESERIAL                 // 告诉终端用户程序开始运行
-    nop
+    // 向 Term 发送 TIMERSET(0x06)，告诉 Term 用户程序开始运行
+    li.w a0, TIMERSET
+    bl WRITESERIAL
 
 #ifdef ENABLE_INT
     mtc0 v0, CP0_EPC                // 用户程序入口写入EPC
-#else
-    or k0, v0, zero
 #endif
 
-    lui ra, %hi(uregs)              // 定位用户空间寄存器备份地址
-    addiu ra, %lo(uregs)
-    sw v0, PUTREG(31)(ra)           // 保存用户程序入口
-    sw sp, PUTREG(32)(ra)           // 保存栈指针
+    la.abs ra, uregs
+    // 保存用户程序入口
+    st.w s0, ra, PUTREG(32)
+    // 保存栈指针
+    st.w sp, ra, PUTREG(33)
 
-    lw $1,  PUTREG(1)(ra)           // 装入$1-$30
-    lw $2,  PUTREG(2)(ra)
-    lw $3,  PUTREG(3)(ra)
-    lw $4,  PUTREG(4)(ra)
-    lw $5,  PUTREG(5)(ra)
-    lw $6,  PUTREG(6)(ra)
-    lw $7,  PUTREG(7)(ra)
-    lw $8,  PUTREG(8)(ra)
-    lw $9,  PUTREG(9)(ra)
-    lw $10, PUTREG(10)(ra)
-    lw $11, PUTREG(11)(ra)
-    lw $12, PUTREG(12)(ra)
-    lw $13, PUTREG(13)(ra)
-    lw $14, PUTREG(14)(ra)
-    lw $15, PUTREG(15)(ra)
-    lw $16, PUTREG(16)(ra)
-    lw $17, PUTREG(17)(ra)
-    lw $18, PUTREG(18)(ra)
-    lw $19, PUTREG(19)(ra)
-    lw $20, PUTREG(20)(ra)
-    lw $21, PUTREG(21)(ra)
-    lw $22, PUTREG(22)(ra)
-    lw $23, PUTREG(23)(ra)
-    lw $24, PUTREG(24)(ra)
-    lw $25, PUTREG(25)(ra)
-    //lw $26, PUTREG(26)(ra)
-    //lw $27, PUTREG(27)(ra)
-    lw $28, PUTREG(28)(ra)
-    lw $29, PUTREG(29)(ra)
-    lw $30, PUTREG(30)(ra)
+    // 恢复 $r1-$r31
+    // $r1(ra) 最后处理
+    // ld.w $r1, ra, PUTREG(1)
+    ld.w $r2, ra, PUTREG(2)
+    ld.w $r3, ra, PUTREG(3)
+    ld.w $r4, ra, PUTREG(4)
+    ld.w $r5, ra, PUTREG(5)
+    ld.w $r6, ra, PUTREG(6)
+    ld.w $r7, ra, PUTREG(7)
+    ld.w $r8, ra, PUTREG(8)
+    ld.w $r9, ra, PUTREG(9)
+    ld.w $r10, ra, PUTREG(10)
+    ld.w $r11, ra, PUTREG(11)
+    ld.w $r12, ra, PUTREG(12)
+    ld.w $r13, ra, PUTREG(13)
+    ld.w $r14, ra, PUTREG(14)
+    ld.w $r15, ra, PUTREG(15)
+    ld.w $r16, ra, PUTREG(16)
+    ld.w $r17, ra, PUTREG(17)
+    ld.w $r18, ra, PUTREG(18)
+    ld.w $r19, ra, PUTREG(19)
+    ld.w $r20, ra, PUTREG(20)
+    ld.w $r21, ra, PUTREG(21)
+    ld.w $r22, ra, PUTREG(22)
+    ld.w $r23, ra, PUTREG(23)
+    ld.w $r24, ra, PUTREG(24)
+    ld.w $r25, ra, PUTREG(25)
+    ld.w $r26, ra, PUTREG(26)
+    ld.w $r27, ra, PUTREG(27)
+    ld.w $r28, ra, PUTREG(28)
+    ld.w $r29, ra, PUTREG(29)
+    ld.w $r30, ra, PUTREG(30)
 
-    lui ra, %hi(.USERRET2)          // ra写入返回地址
-    addiu ra, %lo(.USERRET2)
-    nop
 #ifdef ENABLE_INT
     eret                            // 进入用户程序
 #else
-    jr k0
-    nop
+    // 读取用户程序入口并跳转
+    // 用户 ret 后回到 .USERRET2
+    ld.w ra, ra, PUTREG(32)
+    jirl ra, ra, 0
 #endif
 .USERRET2:
-    nop
 
-    lui ra, %hi(uregs)              // 定位用户空间寄存器备份地址
-    addiu ra, %lo(uregs)
+    // 保存寄存器 $r1-$r30 到 uregs
+    la.abs ra, uregs
 
-    sw $1,  PUTREG(1)(ra)           // 备份$1-$30
-    sw $2,  PUTREG(2)(ra)
-    sw $3,  PUTREG(3)(ra)
-    sw $4,  PUTREG(4)(ra)
-    sw $5,  PUTREG(5)(ra)
-    sw $6,  PUTREG(6)(ra)
-    sw $7,  PUTREG(7)(ra)
-    sw $8,  PUTREG(8)(ra)
-    sw $9,  PUTREG(9)(ra)
-    sw $10, PUTREG(10)(ra)
-    sw $11, PUTREG(11)(ra)
-    sw $12, PUTREG(12)(ra)
-    sw $13, PUTREG(13)(ra)
-    sw $14, PUTREG(14)(ra)
-    sw $15, PUTREG(15)(ra)
-    sw $16, PUTREG(16)(ra)
-    sw $17, PUTREG(17)(ra)
-    sw $18, PUTREG(18)(ra)
-    sw $19, PUTREG(19)(ra)
-    sw $20, PUTREG(20)(ra)
-    sw $21, PUTREG(21)(ra)
-    sw $22, PUTREG(22)(ra)
-    sw $23, PUTREG(23)(ra)
-    sw $24, PUTREG(24)(ra)
-    sw $25, PUTREG(25)(ra)
-    //sw $26, PUTREG(26)(ra)
-    //sw $27, PUTREG(27)(ra)
-    sw $28, PUTREG(28)(ra)
-    sw $29, PUTREG(29)(ra)
-    sw $30, PUTREG(30)(ra)
+    st.w $r1, ra, PUTREG(1)
+    st.w $r2, ra, PUTREG(2)
+    st.w $r3, ra, PUTREG(3)
+    st.w $r4, ra, PUTREG(4)
+    st.w $r5, ra, PUTREG(5)
+    st.w $r6, ra, PUTREG(6)
+    st.w $r7, ra, PUTREG(7)
+    st.w $r8, ra, PUTREG(8)
+    st.w $r9, ra, PUTREG(9)
+    st.w $r10, ra, PUTREG(10)
+    st.w $r11, ra, PUTREG(11)
+    st.w $r12, ra, PUTREG(12)
+    st.w $r13, ra, PUTREG(13)
+    st.w $r14, ra, PUTREG(14)
+    st.w $r15, ra, PUTREG(15)
+    st.w $r16, ra, PUTREG(16)
+    st.w $r17, ra, PUTREG(17)
+    st.w $r18, ra, PUTREG(18)
+    st.w $r19, ra, PUTREG(19)
+    st.w $r20, ra, PUTREG(20)
+    st.w $r21, ra, PUTREG(21)
+    st.w $r22, ra, PUTREG(22)
+    st.w $r23, ra, PUTREG(23)
+    st.w $r24, ra, PUTREG(24)
+    st.w $r25, ra, PUTREG(25)
+    st.w $r26, ra, PUTREG(26)
+    st.w $r27, ra, PUTREG(27)
+    st.w $r28, ra, PUTREG(28)
+    st.w $r29, ra, PUTREG(29)
+    st.w $r30, ra, PUTREG(30)
 
-    lw sp, PUTREG(32)(ra)
-    ori a0, zero, TIMETOKEN         // 发送TIMETOKEN(0x07)信号
-    jal WRITESERIAL                 // 告诉终端用户程序结束运行
-    nop
+    // 恢复栈指针
+    ld.w sp, ra, PUTREG(33)
 
-    j .DONE
-    nop
+    // 发送 TIMETOKEN(0x07) 告诉 Term 用户程序结束运行
+    li.w a0, TIMETOKEN
+    bl WRITESERIAL
+
+    b .DONE
 
 .DONE:
-    j SHELL                         // 交互循环
-    nop
+    b SHELL
 
 
 
-
-    .set reorder
-    .set at

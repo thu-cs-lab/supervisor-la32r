@@ -3,18 +3,22 @@
 #include <unistd.h>
 #include <exception.h>
 
-    .set noreorder
-    .set noat
-
     .section .bss
     .p2align 2
-    .global TCBT                    // thread control block table
+    // TCBT(thread control block table)
+    // 每个线程对应一个 32 位地址，系统中有两个线程：
+    // thread0(idle)
+    // thread1(shell/user)
+    .global TCBT
 TCBT:
     .long 0
     .long 0
-    .global current                 // current thread TCB address
+
+    // 当前线程的 thread control block 地址
+    .global current
 current:
     .long 0
+
 #ifdef ENABLE_TLB                   // 声明页表
     .section .bss.ptes
     .global PTECODE
@@ -38,26 +42,24 @@ PTESTACK:
     .text
     .p2align 2
 monitor_version:
-    .asciz "MONITOR for MIPS32 - initialized."
+    .asciz "MONITOR for LA32R - initialized."
 
-
-    /* start address for the .bss section. defined in linker script */
+    // .bss 段的起始和结束地址，见 kernel.ld
     .word   _sbss
-    /* end address for the .bss section. defined in linker script */
     .word   _ebss
+
+    .p2align 2
     .global START
-START:                              // kernel init
-    lui k0, %hi(_sbss)
-    addiu k0, %lo(_sbss)
-    lui k1, %hi(_ebss)
-    addiu k1, %lo(_ebss)
+START:
+
+    // .bss 清零
+    la.abs t0, _sbss
+    la.abs t1, _sbss
 bss_init:
-    beq k0, k1, bss_init_done
-    nop
-    sw  zero, 0(k0)
-    addiu k0, k0, 4
+    beq t0, t1, bss_init_done
+    st.w zero, t0, 0
+    addi.w t0, t0, 4
     b   bss_init
-    nop
 
 bss_init_done:
 #ifdef ENABLE_INT
@@ -83,37 +85,45 @@ bss_init_done:
     and t0, t0, t1                  // Cause IV位置零
     mtc0 t0, CP0_CAUSE              // 关闭中断特殊入口
 #endif
-    lui sp, %hi(KERNEL_STACK_INIT)  // 设置内核栈
-    addiu sp, %lo(KERNEL_STACK_INIT)
-    or fp, sp, zero
-    lui t0, %hi(USER_STACK_INIT)    // 设置用户栈
-    addiu t0, %lo(USER_STACK_INIT)
-    lui t1, %hi(uregs_sp)           // 写入用户空间备份
-    sw t0, %lo(uregs_sp)(t1)
-    lui t1, %hi(uregs_fp)
-    sw t0, %lo(uregs_fp)(t1)
 
-    /* init serial */
+    // 设置内核栈
+    la.abs sp, KERNEL_STACK_INIT
+    la.abs fp, KERNEL_STACK_INIT
+
+    // 把初始用户栈地址写入 uregs_sp & uregs_fp
+    la.abs t0, USER_STACK_INIT
+    la.abs t1, uregs_sp
+    st.w t0, t1, 0
+    la.abs t1, uregs_fp
+    st.w t0, t1, 0
+
+    // 初始化 QEMU 串口
 #ifdef MACH_QEMU
-    /* see ucore/kern/driver/console.c */
-    lui t0, 0xBFD0                  // NOTE: all COM_* share high 16 bits
-                                    // 0xBFD0 should be %hi(COM1) but can not be used
-                                    // due to a compiler bug (bugzilla/20649)
-    sb zero, %lo(COM_FCR)(t0)       // console.c:54
-    ori t1, zero, %lo(COM_LCR_DLAB)
-    sb t1, %lo(COM_LCR)(t0)         // :57
-    ori t1, zero, %lo(COM_DLL_VAL)
-    sb t1, %lo(COM_DLL)(t0)         // :58
-    sb zero, %lo(COM_DLM)(t0)       // :59
-    ori t1, zero, %lo(COM_LCR_CONFIG)
-    sb t1, %lo(COM_LCR)(t0)         // :62
-    sb zero, %lo(COM_MCR)(t0)       // :65
-    ori t1, zero, %lo(COM_IER_RDI)
-    sb t1, %lo(COM_IER)(t0)         // :67
-#else
-    lui t0, %hi(SerialStat)
-    ori t1, zero, 0x10
-    sb t1, %lo(SerialStat)(t0)      // 串口可读中断
+    la.abs t0, COM1
+
+    // COM_FCR(2) = 0x07(Enable FIFO, clear tx & rx FIFO)
+    li.w t1, 0x07
+    st.b t1, t0, 2
+
+    // COM_LCR(3) = 0x80(Set DLAB=1)
+    li.w t1, 0x80
+    st.b t1, t0, 3
+
+    // COM_DLL(0) = 0x1(115200 baud)
+    li.w t1, 0x01
+    st.b t1, t0, 0
+
+    // COM_DLM(1) = 0x0(115200 baud)
+    li.w t1, 0x00
+    st.b t1, t0, 1
+
+    // COM_LCR(3) = 0x3(Set DLAB=0, 8 bits, no party, 1 stop bit)
+    li.w t1, 0x03
+    st.b t1, t0, 3
+
+    // COM_MCR(4) = 0x0(Data terminal ready)
+    li.w t1, 0x00
+    st.b t1, t0, 4
 #endif
 
 #ifdef ENABLE_INT
@@ -124,16 +134,18 @@ bss_init_done:
 #endif
 
 
-    ori t0, zero, TF_SIZE / 4       // 计数器
+    // 在栈上预留大小为 TF_SIZE 空间且清零
+    li.w t0, TF_SIZE / 4
 .LC0:
-    addiu t0, t0, -1                // 滚动计数器
-    addiu sp, sp, -4                // 移动栈指针
-    sw zero, 0(sp)                  // 初始化栈空间
-    bne t0, zero, .LC0              // 初始化循环
-    nop
-    lui t0, %hi(TCBT)
-    addiu t0, %lo(TCBT)           // 载入TCBT地址
-    sw sp, 0(t0)                    // thread0(idle)的中断帧地址设置
+    addi.w t0, t0, -1
+    addi.w sp, sp, -4
+    st.w zero, sp, 0
+    bne t0, zero, .LC0
+
+    // 把 thread0(idle) 的中断帧地址设为当前栈地址
+    la.abs t0, TCBT
+    st.w sp, t0, 0
+
 #ifdef ENABLE_INT
     mfc0 t1, CP0_STATUS             // 取STATUS
     mfc0 t2, CP0_CAUSE              // 取CAUSE
@@ -144,25 +156,25 @@ bss_init_done:
     addiu t3, %lo(IDLELOOP)       // 取得idle线程入口
     sw t3, TF_EPC(sp)               // 写中断帧EPC
 #endif
-    or t6, sp, zero                 // t6保存idle中断帧位置
 
-    ori t0, zero, TF_SIZE / 4       // 计数器
+    // t6 寄存器保存 idle 中断帧位置
+    move t6, sp
+
+    // 在栈上预留大小为 TF_SIZE 空间且清零
+    li.w t0, TF_SIZE / 4
 .LC1:
-    addiu t0, t0, -1                // 滚动计数器
-    addiu sp, sp, -4                // 移动栈指针
-    sw zero, 0(sp)                  // 初始化栈空间
-    bne t0, zero, .LC1              // 初始化循环
-    nop
-    lui t0, %hi(TCBT)
-    addiu t0, %lo(TCBT)           // 载入TCBT地址
-    sw sp, 4(t0)                    // thread1(shell/user)的中断帧地址设置
-    sw sp, TF_sp(t6)                // 设置idle线程栈指针(调试用?)
+    addi.w t0, t0, -1
+    addi.w sp, sp, -4
+    st.w zero, sp, 0
+    bne t0, zero, .LC1
 
-    lui t2, %hi(TCBT + 4)
-    addiu t2, %lo(TCBT + 4)
-    lw t2, 0(t2)                    // 取得thread1的TCB地址
-    lui t1, %hi(current)
-    sw t2, %lo(current)(t1)         // 设置当前线程为thread1
+    // 把 thread1(shell/user) 的中断帧地址设为当前栈地址
+    la.abs t0, TCBT
+    st.w sp, t0, 4
+
+    // 设置当前线程为 thread1
+    la.abs t0, current
+    st.w sp, t0, 0
 
 #ifdef ENABLE_TLB                   // 打开TLB机制
     lui t0, 0xC000                  // PTE在kseg2
@@ -278,26 +290,27 @@ bss_init_done:
     nop
 #endif
 
-    j WELCOME                       // 进入主线程
-    nop
+    // 进入主线程
+    b WELCOME
 
 
 
 WELCOME:
-    lui s0, %hi(monitor_version)    // 装入启动信息
-    addiu s0, %lo(monitor_version)
-    lb a0, 0(s0)
+    // 通过串口发送启动信息
+    la.abs s0, monitor_version
+
+    ld.b a0, s0, 0
 .Loop0:
-    addiu s0, s0, 0x1
-    jal WRITESERIAL                 // 调用串口写函数
-    nop
-    lb a0, 0(s0)
-    bne a0, zero, .Loop0            // 打印循环至0结束符
-    nop
-    j SHELL                         // 开始交互
-    nop
+    addi.w s0, s0, 1
 
+    // 调用串口写函数
+    bl WRITESERIAL
 
+    ld.b a0, s0, 0
+    bne a0, zero, .Loop0
+
+    // 进入 shell
+    b SHELL
 
 IDLELOOP:
     nop
@@ -310,12 +323,8 @@ IDLELOOP:
     nop
     nop
     nop
-    j IDLELOOP
-    nop
+    b IDLELOOP
 
-
-    .set at
-    .set reorder
 
 
 
