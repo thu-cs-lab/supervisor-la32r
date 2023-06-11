@@ -20,12 +20,10 @@
 #define PTESTACK_SIZE   ((RAM1KBASE - RAM1BASE) / 0x1000 * 4)
 
 /* for EntryLo0-1   */
-#define ELO_VALIDB  0
 #define ELO_VALIDF  ((1) << 0)
-#define ELO_DIRTYB  1
 #define ELO_DIRTYF  ((1) << 1)
-#define ELO_GLOBALB 6
 #define ELO_GLOBALF ((1) << 6)
+#define ELO_CACHEF  ((1) << 4)
 
 #define SYSCALL_BASE            0x80
 

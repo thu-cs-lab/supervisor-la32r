@@ -189,9 +189,9 @@ bss_init_done:
 
     // 构造 EntryLo
     // PPN = PA >> 12
-    // EntryLo = (PPN << 8) | VALID | DIRTY | GLOBAL
+    // EntryLo = (PPN << 8) | VALID | DIRTY | GLOBAL | CACHE
     srli.w t0, t0, 4
-    li.w t1, (ELO_VALIDF | ELO_DIRTYF | ELO_GLOBALF)
+    li.w t1, (ELO_VALIDF | ELO_DIRTYF | ELO_GLOBALF | ELO_CACHEF)
     or t0, t0, t1
 
     // 循环每个 EntryLo
@@ -209,9 +209,9 @@ bss_init_done:
 
     // 构造 EntryLo
     // PPN = PA >> 12
-    // EntryLo = (PPN << 8) | VALID | DIRTY | GLOBAL
+    // EntryLo = (PPN << 8) | VALID | DIRTY | GLOBAL | CACHE
     srli.w t0, t0, 4
-    li.w t1, (ELO_VALIDF | ELO_DIRTYF | ELO_GLOBALF)
+    li.w t1, (ELO_VALIDF | ELO_DIRTYF | ELO_GLOBALF | ELO_CACHEF)
     or t0, t0, t1
 
     // 循环每个 EntryLo
