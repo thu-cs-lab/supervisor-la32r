@@ -130,9 +130,9 @@ def run_T(num):
             print("Error: TLB support not enabled")
             break
         print("  %x    %05x_000 %05x_000  %x   %x   %x   %x" %
-            (i, entry_hi>>13, entry_lo0>>8, entry_lo0>>4&3, entry_lo0>>1&1, entry_lo0>>0&1, entry_lo0>>6&1))
+            (i, entry_hi>>12, entry_lo0>>8, entry_lo0>>4&3, entry_lo0>>1&1, entry_lo0>>0&1, entry_lo0>>6&1))
         print("       %05x_000 %05x_000  %x   %x   %x   %x" %
-            (         entry_hi>>13|1, entry_lo1>>8, entry_lo1>>4&3, entry_lo1>>1&1, entry_lo1>>0&1, entry_lo1>>6&1))
+            (         entry_hi>>12|1, entry_lo1>>8, entry_lo1>>4&3, entry_lo1>>1&1, entry_lo1>>0&1, entry_lo1>>6&1))
 
 def run_A(addr):
     print("one instruction per line, empty line to end.")

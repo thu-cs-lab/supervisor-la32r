@@ -246,7 +246,7 @@ TLBREFILL:
     // t0: 偏移的页数
     // t1: PTE 基地址
 .FILL:
-    slli.w t0, t0, 4
+    slli.w t0, t0, 2
     add.w t1, t0, t1
 
     // EntryLo0
