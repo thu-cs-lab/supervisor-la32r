@@ -205,6 +205,7 @@ SYSCALL:
 #ifdef ENABLE_TLB
     .section .text
     .global TLBREFILL
+    .p2align 5
 TLBREFILL:
     // 腾出 t0 和 t1 寄存器，保存到 CSR_SAVE0/1
     csrwr t0, CSR_SAVE0

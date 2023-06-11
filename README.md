@@ -131,52 +131,38 @@ CSR 寄存器字段功能定义参见 LoongArch 32 Reduced 特权态规范（在
 
 ### 进阶二：TLB 支持
 
-在支持异常处理的基础上，可以进一步使能 TLB 支持，从而实现用户态地址映射。要启用这一功能，编译时的命令变为：
+在支持异常处理的基础上，可以进一步使能 TLB 支持，从而实现虚实地址映射。要启用这一功能，编译时的命令变为：
 
 `make EN_INT=y EN_TLB=y`
 
 CPU 要额外实现以下指令
 
-1. `TLBP` 01000010000000000000000000001000
-1. `TLBR` 01000010000000000000000000000001
-1. `TLBWI` 01000010000000000000000000000010
-1. `TLBWR` 01000010000000000000000000000110
+1. `tlbrd`
+1. `tlbfill`
+1. `invtlb`
 
+此外还需要实现 CSR：
 
-此外还需要实现 CP0 寄存器：
+1. CSR.TLBRENTRY
+2. CSR.SAVE0
+3. CSR.SAVE1
+4. CSR.BADV
+5. CSR.TLBELO0
+6. CSR.TLBELO1
 
-1. Context
-2. Config1: MMUSize
-3. Index
-4. Entryhi: VPN2
-5. Entrylo0/1: PFN, D, V
-6. Wired
-7. Random
+以及 TLB Refill 异常，其中 Refill 异常入口地址为 TLBREFILL，与其它异常的入口地址不同。
 
-以及TLB相关的几个异常，其中 Refill 异常入口地址为 0x80001000，与其它异常的入口地址不同。
+为了简化，虽然 TLB 可以支持灵活的虚实地址转换，监控程序只实现了简单的线性映射：
 
-为了简化，TLB实际的映射是线性映射。将0x80100000-0x803FFFFF放在kuseg地址最低端，将0x80400000-0x807EFFFF放在kuseg的地址最高端。4MB的地址映射在kseg2的页表里只需8KB的页表。因此设CP0的WIRED=2，TLB最低两项存kseg2地址翻译。
+- va[0x00000000, 0x002FFFFF] = pa[0x00100000, 0x003FFFFF] 对应用户代码空间
+- va[0x7FC10000, 0x7FFFFFFF] = pa[0x00400000, 0x007EFFFF] 对应用户数据空间
 
-在一般中断处理中，需要处理TLB不合法异常。修改异常通过统一置D位为一避免。当访问无法映射的地址时，向串口发送地址访问违法信号，并重启。因为正常访问kseg2不会引发TLB异常，所以异常类型TLBL,TLBS,Mod(修改TLB只读页)都是严重错误，需要发送错误信号 0x80 并重启。
+监控程序为这两个区间内的每个页保存了一个对应的 EntryLo 项，并连续地保存在 PTECODE 和 PTESTACK 中。在处理 TLB Refill 异常的时候，监控程序会找到对应的 EntryLo0 和 EntryLo1 取值，然后用 tlbfill 指令写入随机 TLB 表项。
 
-kuseg的映射：
+此时用户栈的地址初始化为 0x80000000。
 
-- va[0x00000000, 0x002FFFFF] = pa[0x00100000, 0x003FFFFF]
-- va[0x7FC10000, 0x7FFFFFFF] = pa[0x00400000, 0x007EFFFF]
+虽然使用了 TLB，但是没有进行特权态的切换。
  
-页表：
- 
-- PTECODE: va(i*page_size)->[i]->RAM0UBASE[i]
-- PTESTACK: va(KSEG0BASE+i*page_size-RAM1USIZE)->[i]->RAM1[i]
-
-初始化过程：
-
-1. 从Config1获得TLB大小，初始化TLB
-1. 设Context的PTEBase并填写页表
-1. PageMask设零（固定为4K页大小）
-1. 将用户栈指针设为 0x80000000
-1. Wired设为2，设置对kseg2的映射。
-
 ## Term
 
 Term 程序运行在实验者的电脑上，提供监控程序和人交互的界面。Term 支持7种命令，它们分别是

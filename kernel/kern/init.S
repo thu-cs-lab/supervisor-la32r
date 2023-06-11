@@ -183,7 +183,6 @@ bss_init_done:
     // 清除所有 TLB 表项
     invtlb 0, zero, zero
 
-
     // 填写 RAM0 页表
     la.abs a0, PTECODE
     li.w t0, PRAM0UBASE
