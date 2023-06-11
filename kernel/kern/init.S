@@ -77,6 +77,18 @@ bss_init_done:
     la.abs t1, uregs_fp
     st.w t0, t1, 0
 
+    // 配置直接映射窗口
+    // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为一致可缓存
+    // 对应 CSR.DMW0=0x80000011
+    li.w t0, 0x80000011
+    csrwr t0, CSR_DMW0
+    // 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为强序非缓存
+    // 对应 CSR.DMW1=0xA0000001
+    li.w t0, 0xA0000011
+    csrwr t0, CSR_DMW1
+
     // 初始化 QEMU 串口
 #ifdef MACH_QEMU
     la.abs t0, COM1
