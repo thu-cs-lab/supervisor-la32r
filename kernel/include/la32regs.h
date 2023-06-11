@@ -10,9 +10,9 @@
 #define CSR_BADV 0x7
 #define CSR_EENTRY 0xc
 #define CSR_TLBIDX 0x10
-#define CSR_TLBHI 0x11
-#define CSR_TLBLO0 0x12
-#define CSR_TLBLO1 0x13
+#define CSR_TLBEHI 0x11
+#define CSR_TLBELO0 0x12
+#define CSR_TLBELO1 0x13
 #define CSR_ASID 0x18
 #define CSR_PGDL 0x19
 #define CSR_PGDH 0x1A

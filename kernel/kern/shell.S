@@ -50,19 +50,15 @@ SHELL:
     addi.w sp, sp, -0x18
 
 #ifdef ENABLE_TLB
-    mtc0 v0, CP0_INDEX              // 写入index
-    mfc0 s1, CP0_ENTRYHI            // 保存ASID
-    nop
-    tlbr
-    nop
-    mfc0 s0, CP0_ENTRYHI            // 取ENTRYHI打印
-    sw s0, 0xC(sp)
-    mfc0 s0, CP0_ENTRYLO0           // 取ENTRYLO0
-    sw s0, 0x10(sp)
-    mfc0 s0, CP0_ENTRYLO1           // 取ENTRYLO1
-    sw s0, 0x14(sp)
-    mtc0 s1, CP0_ENTRYHI            // 写回ASID
-    nop
+    csrwr a0, CSR_TLBIDX
+    tlbrd
+    // 取出 EntryHi
+    csrrd s0, CSR_TLBEHI
+    st.w s0, sp, 0xC
+    csrrd s0, CSR_TLBELO0
+    st.w s0, sp, 0x10
+    csrrd s0, CSR_TLBELO1
+    st.w s0, sp, 0x14
 #else
     // 不支持 TLB 则返回全1
     li.w s0, -1

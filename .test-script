@@ -59,7 +59,7 @@ expect ">>"
 send "D\n"
 send "0\n"
 send "16\n"
-expect -re "0x00000000: +0x24020001" {} timeout {exit 1}
+expect -re "0x00000000: +0x0280040c" {} timeout {exit 1}
 
 expect ">>"
 send "Q\n"

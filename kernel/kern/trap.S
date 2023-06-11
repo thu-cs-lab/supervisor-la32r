@@ -29,6 +29,8 @@ FATAL:
     // 重启
     b START
 
+    // 入口地址的低 6 位必须为 0
+    .p2align 6
 EXCEPTIONHANDLER:
     // 腾出 sp 寄存器用于保存寄存器
     // 交换 sp 寄存器和 CSR_SAVE0
@@ -203,14 +205,63 @@ SYSCALL:
 #ifdef ENABLE_TLB
     .section .text
     .global TLBREFILL
-TLBREFILL:                          // TLB快速重填
-    mfc0 k1, CP0_CONTEXT
-    lw k0, 0x0(k1)
-    lw k1, 0x8(k1)
-    mtc0 k0, CP0_ENTRYLO0
-    mtc0 k1, CP0_ENTRYLO1
-    nop
-    tlbwr
-    eret
-    nop
+TLBREFILL:
+    // 腾出 t0 和 t1 寄存器，保存到 CSR_SAVE0/1
+    csrwr t0, CSR_SAVE0
+    csrwr t1, CSR_SAVE1
+
+    // 找到虚拟页号
+    csrrd t0, CSR_BADV
+    srli.w t0, t0, 12
+
+    // 去掉最低位
+    li.w t1, -2
+    and t0, t0, t1
+
+    // 如果在 RAM0
+    li.w t1, (0x300000 >> 12)
+    ble t0, t1, .RAM0
+
+    // 如果在 RAM1
+    li.w t1, (0x7FC10000 >> 12)
+    bge t0, t1, .RAM1
+
+    b .EXIT
+
+.RAM0:
+    // 此时要用物理地址
+    la.abs t1, PTECODE-0x80000000
+    b .FILL
+
+.RAM1:
+    li.w t1, (0x7FC10000 >> 12)
+    sub.w t0, t0, t1
+
+    // 此时要用物理地址
+    la.abs t1, PTESTACK-0x80000000
+    b .FILL
+
+    // 找到对应的 EntryLo0/EntryLo1
+    // t0: 偏移的页数
+    // t1: PTE 基地址
+.FILL:
+    slli.w t0, t0, 4
+    add.w t1, t0, t1
+
+    // EntryLo0
+    ld.w t0, t1, 0
+    csrwr t0, CSR_TLBELO0
+
+    // EntryLo1
+    ld.w t0, t1, 4
+    csrwr t0, CSR_TLBELO1
+
+    tlbfill
+    b .EXIT
+
+.EXIT:
+    // 恢复 t0 和 t1 寄存器
+    csrrd t0, CSR_SAVE0
+    csrrd t1, CSR_SAVE1
+    ertn
 #endif

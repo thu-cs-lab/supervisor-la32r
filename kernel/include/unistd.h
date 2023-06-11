@@ -3,7 +3,7 @@
 #include <la32regs.h>
 
 #define PAGE_SIZE   0x1000          // 4KB页
-// 虚拟地址映射：
+// 用户程序虚拟地址映射：
 // RAM0: 0x00000000 - 0x002FFFFF
 //     ->0x00100000 - 0x003FFFFF
 // RAM1: 0x7FC10000 - 0x7FFFFFFF
@@ -15,19 +15,20 @@
 #define RAM1BASE    0x80400000
 #define RAM1KBASE   0x807F0000
 #define KSEG0_BASE  0x80000000
-#define PTECODE_SIZE    ((RAM1BASE - RAM0UBASE) / 0x1000 * 8)
-#define PTESTACK_SIZE   ((RAM1KBASE - RAM1BASE) / 0x1000 * 8)
+
+#define PTECODE_SIZE    ((RAM1BASE - RAM0UBASE) / 0x1000 * 4)
+#define PTESTACK_SIZE   ((RAM1KBASE - RAM1BASE) / 0x1000 * 4)
 
 
 #define KSEG2PAGE0  0xC0000000      // kseg2中页表的第一页位置
 
 /* for EntryLo0-1   */
-#define ELO_GLOBALB 0
-#define ELO_GLOBALF (_ULCAST_(1) << 0)
-#define ELO_VALIDB  1
-#define ELO_VALIDF  (_ULCAST_(1) << 1)
-#define ELO_DIRTYB  2
-#define ELO_DIRTYF  (_ULCAST_(1) << 2)
+#define ELO_VALIDB  0
+#define ELO_VALIDF  ((1) << 0)
+#define ELO_DIRTYB  1
+#define ELO_DIRTYF  ((1) << 1)
+#define ELO_GLOBALB 6
+#define ELO_GLOBALF ((1) << 6)
 
 #define SYSCALL_BASE            0x80
 
