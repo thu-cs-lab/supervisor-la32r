@@ -3,15 +3,21 @@
 #include <la32regs.h>
 
 #define PAGE_SIZE   0x1000          // 4KB页
+// 虚拟地址映射：
+// RAM0: 0x00000000 - 0x002FFFFF
+//     ->0x00100000 - 0x003FFFFF
+// RAM1: 0x7FC10000 - 0x7FFFFFFF
+//     ->0x00400000 - 0x007EFFFF
+#define PRAM0UBASE  0x00100000
 #define RAM0UBASE   0x80100000
+
+#define PRAM1BASE   0x00400000
 #define RAM1BASE    0x80400000
 #define RAM1KBASE   0x807F0000
 #define KSEG0_BASE  0x80000000
 #define PTECODE_SIZE    ((RAM1BASE - RAM0UBASE) / 0x1000 * 8)
 #define PTESTACK_SIZE   ((RAM1KBASE - RAM1BASE) / 0x1000 * 8)
 
-#define PRAM0UBASE  0x00100000
-#define PRAM1BASE   0x00400000
 
 #define KSEG2PAGE0  0xC0000000      // kseg2中页表的第一页位置
 
