@@ -138,6 +138,11 @@ SHELL:
     addi.w s0, s0, 4
     bne s1, zero, .LC2
 
+#ifdef ENABLE_IBAR
+    // 有 Cache 时让写入的代码生效
+    ibar 0
+#endif
+
     b .DONE
 
     // 操作 - 运行用户程序

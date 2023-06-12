@@ -1,4 +1,4 @@
-ENTRY(INITLOCATE)
+ENTRY(START)
 OUTPUT("kernel.elf")
 OUTPUT_ARCH("loongarch32r")
 OUTPUT_FORMAT("elf32-loongarch")

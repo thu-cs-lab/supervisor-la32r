@@ -33,7 +33,12 @@ ifeq ($(EN_TLB), y)
 	ASFLAG += -DENABLE_TLB
 endif
 
-CONFIG_FILE := .config_$(ON_FPGA)_$(EN_INT)_$(EN_TLB)
+override EN_IBAR ?= n
+ifeq ($(EN_IBAR), y)
+	ASFLAG += -DENABLE_IBAR
+endif
+
+CONFIG_FILE := .config_$(ON_FPGA)_$(EN_INT)_$(EN_TLB)_$(EN_IBAR)
 
 .PHONY: all clean checkdirs show-utest commits-num sim
 
