@@ -10,6 +10,7 @@ PROVIDE(USER_STACK_INIT = 0x807F0000);
 SECTIONS
 {
     . = 0x80000000;
+    _ssupervisor = .;         /* define a global symbol at supervisor start */
     .text : {
         *(.text.init)
         *(.text)
@@ -19,6 +20,7 @@ SECTIONS
     .rodata : {
         *(.rodata)
     }
+    _esupervisor = .;         /* define a global symbol at supervisor start */
     
     . = 0x807F0000;
     .bss : {

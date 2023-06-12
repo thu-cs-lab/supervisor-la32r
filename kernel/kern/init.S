@@ -49,13 +49,50 @@ PTESTACK:
 monitor_version:
     .asciz "MONITOR for LA32R - initialized."
 
-    // 从 0x00000000 地址启动
     .section .text.init
     .p2align 2
     .global START
 START:
 
-    // 此时的 PC 是 0x00000000
+    // 此时的 PC 可能是：
+    // 1. 0x1c000000：把监控程序复制到 0x00000000，再按照第二种模式启动
+    // 2. 0x00000000：配置直接映射窗口，然后跳到 0x80000000
+    // 3. 0x80000000：正常启动
+    pcaddu12i t0, 0
+
+    // pc >= 0x80000000
+    li.w t1, 0x80000000
+    bgeu t0, t1, .BOOT_3
+
+    // 0x1c000000 <= pc < 0x80000000
+    li.w t1, 0x1c000000
+    bgeu t0, t1, .BOOT_1
+
+    // pc < 0x1c000000
+    b .BOOT_2
+
+    // 启动模式 1：从 0x1c000000 开始
+.BOOT_1:
+    // 把 Kernel 从 0x1c000000 复制到 0x000000000
+    la.abs t0, _esupervisor
+    la.abs t1, _ssupervisor
+    sub.w t3, t0, t1
+
+    li.w t0, 0x1c000000
+    li.w t1, 0x00000000
+relocate_kernel:
+    ld.w t2, t0, 0
+    st.w t2, t1, 0
+    addi.w t0, t0, 4
+    addi.w t1, t1, 4
+    blt t1, t3, relocate_kernel
+
+    // 跳转到 0x00000000
+    li.w t0, 0x00000000
+    jr t0
+
+    // 启动模式 2：从 0x00000000 开始
+.BOOT_2:
     // 配置临时直接映射窗口
     // 为从 0x00000000 跳转到 0x80000000 做准备
     // 0x00000000-0x1FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
@@ -75,11 +112,14 @@ START:
     csrwr t0, CSR_CRMD
 
     // 跳转到 0x80000000 以上的虚拟地址
-    la.abs t0, RELOCATE
+    la.abs t0, REAL_START
     jr t0
 
-RELOCATE:
+    // 启动模式 3：从 0x80000000 开始
+.BOOT_3:
+    b REAL_START
 
+REAL_START:
     // 此时的 PC 在 0x80000000 以上
     // 配置直接映射窗口
     // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
