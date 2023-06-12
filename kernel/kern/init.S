@@ -130,7 +130,7 @@ REAL_START:
     // 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF
     // 访问类型为强序非缓存
     // 对应 CSR.DMW1=0xA0000001
-    li.w t0, 0xA0000011
+    li.w t0, 0xA0000001
     csrwr t0, CSR_DMW1
 
     // .bss 清零
