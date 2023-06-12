@@ -8,6 +8,14 @@
     // 写串口：将 a0 的低八位写入串口
 WRITESERIAL:
     la.abs t1, COM1
+.TESTW:
+    // COM_LSR(5), 0x20(THR is empty)
+    ld.b t0, t1, 5
+    andi t0, t0, 0x20
+    beq t0, zero, .TESTW
+
+    la.abs t1, COM1
+    // COM_RBR(0)
     st.b a0, t1, 0
     jr ra
 
