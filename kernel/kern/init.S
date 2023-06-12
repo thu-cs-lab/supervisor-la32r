@@ -49,11 +49,49 @@ PTESTACK:
 monitor_version:
     .asciz "MONITOR for LA32R - initialized."
 
-    // 从 0x80000000 地址启动
+    // 从 0x00000000 地址启动
     .section .text.init
     .p2align 2
     .global START
 START:
+
+    // 此时的 PC 是 0x00000000
+    // 配置临时直接映射窗口
+    // 为从 0x00000000 跳转到 0x80000000 做准备
+    // 0x00000000-0x1FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为一致可缓存
+    // 对应 CSR.DMW0=0x00000011
+    li.w t0, 0x00000011
+    csrwr t0, CSR_DMW0
+
+    // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为一致可缓存
+    // 对应 CSR.DMW1=0x80000011
+    li.w t0, 0x80000011
+    csrwr t0, CSR_DMW1
+
+    // 启用映射地址翻译模式（PG=1，DA=0，DATF=01，DATM=01）
+    li.w t0, 0x000000B0
+    csrwr t0, CSR_CRMD
+
+    // 跳转到 0x80000000 以上的虚拟地址
+    la.abs t0, RELOCATE
+    jr t0
+
+RELOCATE:
+
+    // 此时的 PC 在 0x80000000 以上
+    // 配置直接映射窗口
+    // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为一致可缓存
+    // 对应 CSR.DMW0=0x80000011
+    li.w t0, 0x80000011
+    csrwr t0, CSR_DMW0
+    // 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 访问类型为强序非缓存
+    // 对应 CSR.DMW1=0xA0000001
+    li.w t0, 0xA0000011
+    csrwr t0, CSR_DMW1
 
     // .bss 清零
     la.abs t0, _sbss
@@ -81,18 +119,6 @@ bss_init_done:
     st.w t0, t1, 0
     la.abs t1, uregs_fp
     st.w t0, t1, 0
-
-    // 配置直接映射窗口
-    // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
-    // 访问类型为一致可缓存
-    // 对应 CSR.DMW0=0x80000011
-    li.w t0, 0x80000011
-    csrwr t0, CSR_DMW0
-    // 0xA0000000-0xBFFFFFFF: 映射到 0x00000000-0x1FFFFFFF
-    // 访问类型为强序非缓存
-    // 对应 CSR.DMW1=0xA0000001
-    li.w t0, 0xA0000011
-    csrwr t0, CSR_DMW1
 
     // 初始化 QEMU 串口
 #ifdef MACH_QEMU
