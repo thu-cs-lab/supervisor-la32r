@@ -113,13 +113,13 @@ def single_line_disassmble(binary_instr, addr):
 
 
 def run_T(num):
-    if num < 0: #Print all entries
+    if num < 0: # Print all entries
         start = 0
-        entries = 16
+        entries = 32
     else:
         start = num
         entries = 1
-    print("Index |  VAddr  |  PAddr  | C | D | V | G")
+    print(" Index |  VAddr  |  PAddr  | C | D | V | G")
     for i in range(start, start+entries):
         outp.write(b'T')
         outp.write(int_to_byte_string(i))
@@ -129,9 +129,9 @@ def run_T(num):
         if (entry_hi & entry_lo1 & entry_lo0) == 0xffffffff:
             print("Error: TLB support not enabled")
             break
-        print("  %x    %05x_000 %05x_000  %x   %x   %x   %x" %
+        print("  %02x    %05x_000 %05x_000  %x   %x   %x   %x" %
             (i, entry_hi>>12, entry_lo0>>8, entry_lo0>>4&3, entry_lo0>>1&1, entry_lo0>>0&1, entry_lo0>>6&1))
-        print("       %05x_000 %05x_000  %x   %x   %x   %x" %
+        print("        %05x_000 %05x_000  %x   %x   %x   %x" %
             (         entry_hi>>12|1, entry_lo1>>8, entry_lo1>>4&3, entry_lo1>>1&1, entry_lo1>>0&1, entry_lo1>>6&1))
 
 def run_A(addr):
