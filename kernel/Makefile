@@ -38,7 +38,12 @@ ifeq ($(EN_IBAR), y)
 	ASFLAG += -DENABLE_IBAR
 endif
 
-CONFIG_FILE := .config_$(ON_FPGA)_$(EN_INT)_$(EN_TLB)_$(EN_IBAR)
+override EN_CACOP ?= n
+ifeq ($(EN_CACOP), y)
+	ASFLAG += -DENABLE_CACOP
+endif
+
+CONFIG_FILE := .config_$(ON_FPGA)_$(EN_INT)_$(EN_TLB)_$(EN_IBAR)_$(EN_CACOP)
 
 .PHONY: all clean checkdirs show-utest commits-num sim
 

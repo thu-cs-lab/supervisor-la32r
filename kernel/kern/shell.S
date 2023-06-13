@@ -134,6 +134,15 @@ SHELL:
     // 从串口读取 4 个字节
     bl READSERIALWORD
     st.w a0, s0, 0
+
+#ifdef ENABLE_CACOP
+    // 有 Cache 时让写入的代码生效
+    // L1 ICache
+    cacop 0x10, s0, 0
+    // L1 DCache
+    cacop 0x11, s0, 0
+#endif
+
     addi.w s1, s1, -1
     addi.w s0, s0, 4
     bne s1, zero, .LC2
