@@ -72,7 +72,7 @@ SHELL:
     // 起始地址
     addi.w s0, sp, 0xC
 .LC3:
-    ld.w a0, s0, 0
+    ld.b a0, s0, 0
     bl WRITESERIAL
     addi.w s1, s1, -1
     addi.w s0, s0, 1
