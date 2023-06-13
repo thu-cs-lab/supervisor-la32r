@@ -161,7 +161,6 @@ bss_init_done:
     st.w t0, t1, 0
 
     // 初始化 QEMU 串口
-#ifdef MACH_QEMU
     la.abs t0, COM1
 
     // COM_FCR(2) = 0x07(Enable FIFO, clear tx & rx FIFO)
@@ -191,7 +190,6 @@ bss_init_done:
     // COM_IER(1) = 0x1(Received data available)
     li.w t1, 0x01
     st.b t1, t0, 1
-#endif
 
     // 在栈上预留大小为 TF_SIZE 空间且清零
     li.w t0, TF_SIZE / 4

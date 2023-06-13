@@ -13,15 +13,6 @@ OBJ	:= $(patsubst $(SRCDIR)/%.S, $(OBJDIR)/%.o, $(SRC))
 TARGET	:= kernel.elf
 ASFLAG	:= -D__ASSEMBLY__ -g
 
-override ON_FPGA ?= n
-
-ifeq ($(ON_FPGA), y)
-	MACH_DEF = -DMACH_FPGA
-else
-   	MACH_DEF = -DMACH_QEMU
-endif
-ASFLAG += $(MACH_DEF)
-
 override EN_INT ?= n
 ifeq ($(EN_INT), y)
 	ASFLAG += -DENABLE_INT
@@ -43,7 +34,7 @@ ifeq ($(EN_CACOP), y)
 	ASFLAG += -DENABLE_CACOP
 endif
 
-CONFIG_FILE := .config_$(ON_FPGA)_$(EN_INT)_$(EN_TLB)_$(EN_IBAR)_$(EN_CACOP)
+CONFIG_FILE := .config_$(EN_INT)_$(EN_TLB)_$(EN_IBAR)_$(EN_CACOP)
 
 .PHONY: all clean checkdirs show-utest commits-num sim
 

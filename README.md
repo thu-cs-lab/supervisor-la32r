@@ -14,23 +14,17 @@ Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduc
 
 下面是编译监控程序的过程。在 `kernel` 文件夹下面，有汇编代码和 Makefile 文件，我们可以使用 make 工具编译 Kernel 程序。
 
-监控程序面向两个平台：QEMU 和 FPGA，通过编译时的参数进行区分：`ON_FPGA=y` 表示面向 FPGA，`ON_FPGA=n` 表示面向 QEMU（默认）。
-
 假设当前目录为 `kernel`，目标版本为基础版本，在终端中运行命令
 
-`make ON_FPGA=n`
+`make`
 
-即可编译面向 QEMU 的监控程序。如果顺利结束，将生成 `kernel.elf` 和 `kernel.bin` 文件。要在模拟器中运行它，可以使用命令
+即可编译基础版本的监控程序。如果顺利结束，将生成 `kernel.elf` 和 `kernel.bin` 文件。要在模拟器中运行它，可以使用命令
 
 `make sim`
 
 它会在 QEMU 中启动监控程序，并等待 Term 程序连接。本文后续章节介绍了如何使用 Term 连接模拟器。
 
-若要在编译 FPGA 上运行的 kernel，首先用 `make clean` 清除之前编译的结果，最后用命令
-
-`make ON_FPGA=y`
-
-编译用于硬件的 `kernel.bin`。使用开发板提供的工具，将 `kernel.bin` 写入内存 0 地址（物理地址）位置，并让处理器复位从 0x8000000 地址（LoongArch 32 Reduced 中对应物理地址为 0 的虚地址）处开始执行，Kernel 就运行起来了。
+若要在开发板上运行 kernel，使用开发板提供的工具，将 `kernel.bin` 写入内存 0 地址（物理地址）位置，并让处理器复位从 0x8000000 地址（LoongArch 32 Reduced 中对应物理地址为 0 的虚地址）处开始执行，Kernel 就运行起来了。
 
 Kernel 运行后会先通过串口输出版本号，该功能可作为检验其正常运行的标志。之后 Kernel 将等待 Term 从串口发来的命令，关于 Term 的使用将在后续章节描述。
 
