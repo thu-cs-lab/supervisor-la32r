@@ -257,6 +257,10 @@ TLBREFILL:
     ld.w t0, t1, 4
     csrwr t0, CSR_TLBELO1
 
+    // PS=12
+    li.w t0, (12 << 24)
+    csrwr t0, CSR_TLBIDX
+
     tlbfill
     b .EXIT
 
