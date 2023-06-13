@@ -1,6 +1,6 @@
 #!/usr/bin/expect
 
-set timeout 5
+set timeout 15
 spawn term/term.py -t 127.0.0.1:6666
 
 expect "MONITOR for LA32R - initialized." {} timeout {exit 1}
@@ -60,6 +60,36 @@ send "D\n"
 send "0\n"
 send "16\n"
 expect -re "0x00000000: +0x0280040c" {} timeout {exit 1}
+
+# Test user stack access
+expect ">>"
+send "A\n"
+send "80100000\n"
+expect "one instruction per line"
+expect "]"
+send "addi.w \$r12,\$r0,1\n"
+expect "]"
+send "st.w \$r12,\$r3,-4\n"
+expect "]"
+send "ld.w \$r13,\$r3,-4\n"
+expect "]"
+send "jr \$r1\n"
+expect "]"
+send "\n"
+
+expect ">>"
+send "G\n"
+send "0\n"
+expect "elapsed time" {} timeout {exit 1}
+
+expect ">>"
+send "T\n"
+send " -1\n"
+expect -re "7ffff_000 +007ef_000 +1 +1 +1 +1"  {} timeout {exit 1}
+
+expect ">>"
+send "R\n"
+expect -re "t1.+0x00000001"  {} timeout {exit 1}
 
 expect ">>"
 send "Q\n"
