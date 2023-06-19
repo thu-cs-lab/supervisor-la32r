@@ -2,7 +2,7 @@
 #define __LIBS_UNISTD_H__
 #include <la32regs.h>
 
-#define PAGE_SIZE   0x1000          // 4KB页
+#define PAGE_SIZE   0x1000          // 4KB 页
 // 用户程序虚拟地址映射：
 // RAM0: 0x00000000 - 0x002FFFFF
 //     ->0x00100000 - 0x003FFFFF
