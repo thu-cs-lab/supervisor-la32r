@@ -10,7 +10,7 @@ Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduc
 
 为了在硬件上运行 Kernel 程序，我们首先要对 Kernel 的汇编代码进行编译。编译时需要龙芯提供的 LoongArch 32 Reduced 工具链。将下载的压缩包解压到任意目录后，设置环境变量 `GCCPREFIX` 以便 make 工具找到编译器，例如：
 
-`export GCCPREFIX=/usr/local/loongarch32r-linux-gnusf/bin/loongarch32r-linux-gnusf-gcc`
+`export GCCPREFIX=/usr/local/loongarch32r-linux-gnusf/bin/loongarch32r-linux-gnusf-`
 
 下面是编译监控程序的过程。在 `kernel` 文件夹下面，有汇编代码和 Makefile 文件，我们可以使用 make 工具编译 Kernel 程序。
 
