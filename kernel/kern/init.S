@@ -95,13 +95,13 @@ relocate_kernel:
 .BOOT_2:
     // 配置临时直接映射窗口
     // 为从 0x00000000 跳转到 0x80000000 做准备
-    // 0x80000000-0x1FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 0x80000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
     // 访问类型为一致可缓存
     // 对应 CSR.DMW0=0x80000011
     li.w t0, 0x80000011
     csrwr t0, CSR_DMW0
 
-    // 0x00000000-0x9FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
+    // 0x00000000-0x1FFFFFFF: 映射到 0x00000000-0x1FFFFFFF
     // 访问类型为一致可缓存
     // 对应 CSR.DMW1=0x00000011
     li.w t0, 0x00000011
