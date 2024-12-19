@@ -8,7 +8,7 @@
 
 Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduced 规范。Kernel 提供了三种不同的版本，以适应不同的档次的 CPU 实现。它们分别是：第一档为基础版本，直接基本的 I/O 和命令执行功能，不依赖异常、中断等处理器特征，适合于最简单的 CPU 实现；第二档支持中断，使用中断方式完成串口的 I/O 功能，需要处理器实现中断处理机制；第三档在第二档基础上进一步增加了 TLB 的应用，要求处理器支持基于 TLB 的内存映射，更加接近于操作系统对处理器的需求。
 
-为了在硬件上运行 Kernel 程序，我们首先要对 Kernel 的汇编代码进行编译。编译时需要龙芯提供的 LoongArch 32 Reduced 工具链。将下载的压缩包解压到任意目录后，设置环境变量 `GCCPREFIX` 以便 make 工具找到编译器，例如：
+为了在硬件上运行 Kernel 程序，我们首先要对 Kernel 的汇编代码进行编译。编译时需要[龙芯提供的 LoongArch 32 Reduced 工具链](https://gitee.com/loongson-edu/la32r-toolchains/releases/tag/v0.0.2)。将下载的压缩包解压到任意目录后，设置环境变量 `GCCPREFIX` 以便 make 工具找到编译器，例如：
 
 `export GCCPREFIX=/usr/local/loongarch32r-linux-gnusf/bin/loongarch32r-linux-gnusf-`
 
@@ -22,7 +22,7 @@ Kernel 使用汇编语言编写，使用到的指令均符合 LoongArch 32 Reduc
 
 `make sim`
 
-它会在 QEMU 中启动监控程序，并等待 Term 程序连接。本文后续章节介绍了如何使用 Term 连接模拟器。
+它会在 QEMU 中启动监控程序，并等待 Term 程序连接。龙芯提供的 LoongArch 32 Reduced QEMU 可以在 [gitee](https://gitee.com/loongson-edu/la32r-QEMU/releases/tag/v0.0.2) 上获得。本文后续章节介绍了如何使用 Term 连接模拟器。
 
 若要在开发板上运行 kernel，使用开发板提供的工具，将 `kernel.bin` 写入内存 0 地址（物理地址）位置，并让处理器复位从 0x8000000 地址（LoongArch 32 Reduced 中对应物理地址为 0 的虚地址）处开始执行，Kernel 就运行起来了。
 
